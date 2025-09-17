@@ -1,0 +1,130 @@
+<!DOCTYPE HTML>
+<html lang="en" data-theme="{{ session.get('theme', 'light') }}">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+        <title>{% block title %}Risk Engine{% endblock %}</title>
+        <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        
+        <script>
+            // Theme management
+            function initTheme() {
+                const savedTheme = '{{ session.get('theme', 'light') }}';
+                const html = document.documentElement;
+                
+                if (savedTheme === 'system') {
+                    // Use system preference
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+                    
+                    // Listen for system theme changes
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                        if ('{{ session.get('theme', 'light') }}' === 'system') {
+                            html.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+                        }
+                    });
+                } else {
+                    // Use explicit theme
+                    html.setAttribute('data-theme', savedTheme);
+                }
+            }
+            
+            // Set theme function for quick toggle
+            function setTheme(theme) {
+                const html = document.documentElement;
+                
+                if (theme === 'system') {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+                } else {
+                    html.setAttribute('data-theme', theme);
+                }
+                
+                // Save to server via AJAX
+                fetch('/set_theme', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({theme: theme})
+                }).catch(console.error);
+            }
+            
+            // Initialize theme on page load
+            document.addEventListener('DOMContentLoaded', initTheme);
+        </script>
+    </head>
+    <body>
+        <header>
+        </header>
+        <div class="navbar bg-base-100 shadow-sm">
+  <div class="navbar-start">
+    <div class="dropdown">
+      <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /> </svg>
+      </div>
+      <ul
+        tabindex="0"
+        class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
+        <li><a>Item 1</a></li>
+        <li>
+          <a>Parent</a>
+          <ul class="p-2">
+            <li><a>Submenu 1</a></li>
+            <li><a>Submenu 2</a></li>
+          </ul>
+        </li>
+        <li><a>Item 3</a></li>
+      </ul>
+    </div>
+    <a class="btn btn-ghost text-xl" href="{{ url_for('index') }}">Risk Engine</a>
+  </div>
+  <div class="navbar-center hidden lg:flex">
+    <ul class="menu menu-horizontal px-1">
+      <li><a href="{{ url_for('index') }}">Dashboard</a></li>
+      <li><a href="{{ url_for('portfolio_manager') }}">Portfolio</a></li>
+      <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
+      <li><a href="{{ url_for('settings') }}">Settings</a></li>
+    </ul>
+  </div>
+  <div class="navbar-end">
+    <div class="dropdown dropdown-end">
+      <div tabindex="0" role="button" class="btn btn-ghost btn-circle" title="Toggle Theme">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </div>
+      <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+        <li><a onclick="setTheme('light')">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          Light
+        </a></li>
+        <li><a onclick="setTheme('dark')">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          Dark
+        </a></li>
+        <li><a onclick="setTheme('system')">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          System
+        </a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+        <main>
+            {% block content %}
+            {% endblock %}
+        </main>
+        <footer>
+            <p></p>
+        </footer>
+    </body>
+</html>
