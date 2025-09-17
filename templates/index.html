@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Risk Engine{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-4">Portfolio Risk Dashboard</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'error' if category == 'error' else 'info' }} shadow-lg mb-4">
+                    <div>
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if not dashboard_data %}
+    <div class="alert alert-warning shadow-lg mb-4">
+        <div>
+            <span>No portfolio data available. <a href="{{ url_for('portfolio_manager') }}" class="btn btn-sm btn-primary">Add some assets to get started</a></span>
+        </div>
+    </div>
+    {% else %}
+    {% if not portfolio %}
+    <!-- No Portfolio State -->
+    <div class="hero min-h-[50vh] bg-base-200">
+        <div class="hero-content text-center">
+            <div class="max-w-md">
+                <h1 class="text-5xl font-bold">Welcome!</h1>
+                <p class="py-6">Create your first portfolio to see comprehensive risk analytics and performance metrics on this dashboard.</p>
+                <a href="{{ url_for('portfolio_manager') }}" class="btn btn-primary">Create Portfolio</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- Portfolio Overview Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                </svg>
+            </div>
+            <div class="stat-title">Portfolio P&L</div>
+            <div class="stat-value {{ 'text-success' if dashboard_data and dashboard_data.total_pnl > 0 else 'text-error' if dashboard_data and dashboard_data.total_pnl < 0 else '' }}">
+                {{ "+" if dashboard_data and dashboard_data.total_pnl > 0 else "" }}${{ "%.0f"|format(dashboard_data.total_pnl if dashboard_data else total_pnl if total_pnl else 0) }}
+            </div>
+            <div class="stat-desc">
+                <span class="{{ 'text-success' if dashboard_data and dashboard_data.pnl_percentage > 0 else 'text-error' if dashboard_data and dashboard_data.pnl_percentage < 0 else '' }}">
+                    {{ "+" if dashboard_data and dashboard_data.pnl_percentage > 0 else "" }}{{ "%.2f"|format(dashboard_data.pnl_percentage if dashboard_data else ((total_pnl/total_cost*100) if total_cost and total_cost != 0 else 0)) }}%
+                </span>
+                | Cost: ${{ "%.0f"|format(dashboard_data.total_cost if dashboard_data else total_cost if total_cost else 0) }}
+            </div>
+        </div>
+
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+                </svg>
+            </div>
+            <div class="stat-title">Current Value</div>
+            <div class="stat-value">${{ "%.0f"|format(dashboard_data.total_value if dashboard_data else total_value if total_value else 0) }}</div>
+            {% if dashboard_data and dashboard_data.daily_pnl %}
+            <div class="stat-desc {{ 'text-success' if dashboard_data.daily_pnl > 0 else 'text-error' }}">
+                {{ "+" if dashboard_data.daily_pnl > 0 else "" }}{{ "%.2f"|format(dashboard_data.daily_pnl) }}% today
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+            </div>
+            <div class="stat-title">Sharpe Ratio</div>
+            <div class="stat-value">{{ "%.3f"|format(dashboard_data.sharpe_ratio) if dashboard_data.sharpe_ratio else "N/A" }}</div>
+            <div class="stat-desc">Risk-adjusted return</div>
+        </div>
+
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-accent">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+            </div>
+            <div class="stat-title">Volatility</div>
+            <div class="stat-value">{{ "%.1f"|format(dashboard_data.volatility * 100) }}%</div>
+            <div class="stat-desc">Annualized</div>
+        </div>
+
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+            </div>
+            <div class="stat-title">VaR (95%)</div>
+            <div class="stat-value">{{ "%.1f"|format(dashboard_data.var_95 * 100) }}%</div>
+            <div class="stat-desc">Daily at risk</div>
+        </div>
+    </div>
+
+    <!-- Live Prices Section -->
+    {% if dashboard_data.live_prices %}
+    <div class="card bg-base-100 shadow-xl mb-6">
+        <div class="card-body">
+            <h3 class="card-title flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2 text-success">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                    </svg>
+                    Live Market Prices
+                    <div class="badge badge-success badge-sm ml-2">REAL-TIME</div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="window.location.reload()" class="btn btn-sm btn-outline btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Refresh
+                    </button>
+                    <button onclick="window.location.href='{{ url_for('index') }}?force_refresh=1'" class="btn btn-sm btn-outline btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Force Fresh
+                    </button>
+                </div>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {% for asset in portfolio %}
+                <div class="stat bg-base-200 rounded-lg">
+                    <div class="stat-title text-sm">{{ asset.symbol }}</div>
+                    <div class="stat-value text-lg">
+                        {% if dashboard_data.live_prices[asset.symbol] %}
+                            ${{ "%.2f"|format(dashboard_data.live_prices[asset.symbol]) }}
+                        {% else %}
+                            <span class="text-gray-400">--</span>
+                        {% endif %}
+                    </div>
+                    <div class="stat-desc">
+                        {% if dashboard_data.price_changes and dashboard_data.price_changes[asset.symbol] %}
+                            <span class="{{ 'text-success' if dashboard_data.price_changes[asset.symbol] > 0 else 'text-error' if dashboard_data.price_changes[asset.symbol] < 0 else '' }}">
+                                {{ "+" if dashboard_data.price_changes[asset.symbol] > 0 else "" }}{{ "%.2f"|format(dashboard_data.price_changes[asset.symbol]) }}%
+                            </span>
+                        {% else %}
+                            <span class="text-gray-400">--</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="text-sm text-gray-500 mt-2">
+                Last updated: {{ dashboard_data.price_update_time }}
+                {% if dashboard_data.is_prices_cached %}
+                    <span class="badge badge-info badge-sm ml-2">CACHED</span>
+                {% else %}
+                    <span class="badge badge-success badge-sm ml-2">FRESH</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Stock Analysis Section -->
+    <div class="card bg-base-100 shadow-xl mb-6">
+        <div class="card-body">
+            <h3 class="card-title flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2 text-accent">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.94M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Stock Analysis
+            </h3>
+            
+            <div class="tabs tabs-boxed mb-4">
+                <a id="portfolio-tab" class="tab tab-active" onclick="showPortfolioAnalysis()">Analyze Portfolio Stocks</a>
+                <a id="search-tab" class="tab" onclick="showStockSearch()">Search New Stock</a>
+            </div>
+
+            <!-- Portfolio Stocks Analysis -->
+            <div id="portfolio-analysis" class="analysis-section">
+                {% if portfolio %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for asset in portfolio %}
+                    <div class="card bg-base-200 hover:bg-base-300 cursor-pointer transition-colors" onclick="analyzeStock('{{ asset.symbol }}')">
+                        <div class="card-body p-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-bold text-lg">{{ asset.symbol }}</h4>
+                                    <p class="text-sm text-gray-600">{{ asset.asset_class }}</p>
+                                    <p class="text-xs">Weight: {{ "%.1f"|format(asset.weight * 100) }}%</p>
+                                </div>
+                                <div class="text-right">
+                                    {% if dashboard_data.live_prices and dashboard_data.live_prices[asset.symbol] %}
+                                        <div class="text-lg font-semibold">${{ "%.2f"|format(dashboard_data.live_prices[asset.symbol]) }}</div>
+                                        {% if dashboard_data.price_changes and dashboard_data.price_changes[asset.symbol] %}
+                                            <div class="text-sm {{ 'text-success' if dashboard_data.price_changes[asset.symbol] > 0 else 'text-error' if dashboard_data.price_changes[asset.symbol] < 0 else '' }}">
+                                                {{ "+" if dashboard_data.price_changes[asset.symbol] > 0 else "" }}{{ "%.2f"|format(dashboard_data.price_changes[asset.symbol]) }}%
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-primary w-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                    </svg>
+                                    Analyze
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-400 mb-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    <p class="text-gray-600 mb-4">No portfolio stocks to analyze yet.</p>
+                    <a href="{{ url_for('portfolio_manager') }}" class="btn btn-primary">Add Stocks to Portfolio</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Stock Search Section -->
+            <div id="stock-search" class="analysis-section hidden">
+                <div class="max-w-md mx-auto">
+                    <div class="form-control w-full">
+                        <label class="label">
+                            <span class="label-text font-semibold">Search for any stock</span>
+                            <span class="label-text-alt">Enter ticker symbol</span>
+                        </label>
+                        <div class="input-group">
+                            <input id="stock-ticker-input" type="text" placeholder="e.g., AAPL, GOOGL, TSLA" class="input input-bordered w-full" />
+                            <button class="btn btn-primary" onclick="searchAndAnalyze()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <label class="label">
+                            <span class="label-text-alt">Press Enter or click search to analyze</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Popular Stocks Quick Access -->
+                    <div class="mt-6">
+                        <h4 class="font-semibold mb-3">Popular Stocks</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            {% for symbol in ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'DIS'] %}
+                            <button class="btn btn-sm btn-outline" onclick="quickAnalyze('{{ symbol }}')">{{ symbol }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Metrics and Performance -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Risk Metrics Card -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h3 class="card-title">Risk Metrics</h3>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <tbody>
+                            <tr>
+                                <td>Value at Risk (95%)</td>
+                                <td class="text-right">{{ "%.2f"|format(dashboard_data.var_95 * 100) }}%</td>
+                            </tr>
+                            <tr>
+                                <td>Value at Risk (99%)</td>
+                                <td class="text-right">{{ "%.2f"|format(dashboard_data.var_99 * 100) }}%</td>
+                            </tr>
+                            <tr>
+                                <td>Expected Shortfall (95%)</td>
+                                <td class="text-right">{{ "%.2f"|format(dashboard_data.es_95 * 100) }}%</td>
+                            </tr>
+                            <tr>
+                                <td>Maximum Drawdown</td>
+                                <td class="text-right">{{ "%.2f"|format(dashboard_data.max_drawdown * 100) }}%</td>
+                            </tr>
+                            <tr>
+                                <td>Beta vs SPY</td>
+                                <td class="text-right">{{ "%.3f"|format(dashboard_data.beta) if dashboard_data.beta else "N/A" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics Card -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h3 class="card-title">Performance Metrics</h3>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <tbody>
+                            <tr>
+                                <td>Annualized Return</td>
+                                <td class="text-right {{ 'text-success' if dashboard_data.annual_return > 0 else 'text-error' }}">
+                                    {{ "%.2f"|format(dashboard_data.annual_return * 100) }}%
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Sharpe Ratio</td>
+                                <td class="text-right">{{ "%.3f"|format(dashboard_data.sharpe_ratio) if dashboard_data.sharpe_ratio else "N/A" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Sortino Ratio</td>
+                                <td class="text-right">{{ "%.3f"|format(dashboard_data.sortino_ratio) if dashboard_data.sortino_ratio else "N/A" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Calmar Ratio</td>
+                                <td class="text-right">{{ "%.3f"|format(dashboard_data.calmar_ratio) if dashboard_data.calmar_ratio else "N/A" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Skewness</td>
+                                <td class="text-right">{{ "%.3f"|format(dashboard_data.skewness) if dashboard_data.skewness else "N/A" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Allocation and Correlation -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Asset Allocation -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h3 class="card-title">Asset Allocation</h3>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Live Price</th>
+                                <th>Change</th>
+                                <th>Class</th>
+                                <th>Weight</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asset in portfolio %}
+                            <tr>
+                                <td class="font-bold">{{ asset.symbol }}</td>
+                                <td class="text-right">
+                                    {% if dashboard_data.live_prices and dashboard_data.live_prices[asset.symbol] %}
+                                        ${{ "%.2f"|format(dashboard_data.live_prices[asset.symbol]) }}
+                                    {% else %}
+                                        <span class="text-gray-400">--</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    {% if dashboard_data.price_changes and dashboard_data.price_changes[asset.symbol] %}
+                                        <span class="{{ 'text-success' if dashboard_data.price_changes[asset.symbol] > 0 else 'text-error' if dashboard_data.price_changes[asset.symbol] < 0 else '' }}">
+                                            {{ "+" if dashboard_data.price_changes[asset.symbol] > 0 else "" }}{{ "%.2f"|format(dashboard_data.price_changes[asset.symbol]) }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-gray-400">--</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge badge-outline">{{ asset.asset_class }}</span></td>
+                                <td>{{ "%.1f"|format(asset.weight * 100) }}%</td>
+                                <td>${{ "%.0f"|format(asset.allocation) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Asset Class Diversification -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h3 class="card-title">Asset Class Diversification</h3>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Asset Class</th>
+                                <th>Allocation</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for class_name, data in dashboard_data.asset_class_breakdown.items() %}
+                            <tr>
+                                <td>{{ class_name }}</td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <progress class="progress progress-primary w-20" value="{{ data.weight * 100 }}" max="100"></progress>
+                                        {{ "%.1f"|format(data.weight * 100) }}%
+                                    </div>
+                                </td>
+                                <td>{{ data.count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if dashboard_data.correlation_matrix %}
+    <!-- Correlation Matrix -->
+    <div class="card bg-base-100 shadow-xl mt-6">
+        <div class="card-body">
+            <h3 class="card-title">Correlation Matrix</h3>
+            <div class="overflow-x-auto">
+                {{ dashboard_data.correlation_matrix | safe }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %} <!-- end not portfolio -->
+    {% endif %} <!-- end not dashboard_data -->
+</div>
+
+<script>
+    // Tab switching functionality
+    function showPortfolioAnalysis() {
+        document.getElementById('portfolio-analysis').classList.remove('hidden');
+        document.getElementById('stock-search').classList.add('hidden');
+        document.getElementById('portfolio-tab').classList.add('tab-active');
+        document.getElementById('search-tab').classList.remove('tab-active');
+    }
+
+    function showStockSearch() {
+        document.getElementById('portfolio-analysis').classList.add('hidden');
+        document.getElementById('stock-search').classList.remove('hidden');
+        document.getElementById('portfolio-tab').classList.remove('tab-active');
+        document.getElementById('search-tab').classList.add('tab-active');
+    }
+
+    // Stock analysis functions
+    function analyzeStock(symbol) {
+        window.location.href = `/analysis?ticker=${symbol}`;
+    }
+
+    function searchAndAnalyze() {
+        const ticker = document.getElementById('stock-ticker-input').value.trim().toUpperCase();
+        if (ticker) {
+            analyzeStock(ticker);
+        } else {
+            alert('Please enter a stock ticker symbol');
+        }
+    }
+
+    function quickAnalyze(symbol) {
+        analyzeStock(symbol);
+    }
+
+    // Allow Enter key to trigger search
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('stock-ticker-input');
+        if (input) {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchAndAnalyze();
+                }
+            });
+        }
+    });
+</script>
+
+{% endblock %}

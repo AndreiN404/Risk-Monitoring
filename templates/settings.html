@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Risk Engine{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-4">Settings</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'error' if category == 'error' else 'success' }} shadow-lg mb-4">
+                    <div>
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('settings') }}">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Theme Settings -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h3 class="card-title">Theme Settings</h3>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Choose your theme</span>
+                        </label>
+                        <div class="flex flex-col gap-2">
+                            <label class="label cursor-pointer">
+                                <span class="label-text">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                    Light Theme
+                                </span>
+                                <input type="radio" name="theme" value="light" class="radio radio-primary" {% if session.get('theme', 'light') == 'light' %}checked{% endif %} />
+                            </label>
+                            <label class="label cursor-pointer">
+                                <span class="label-text">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                    </svg>
+                                    Dark Theme
+                                </span>
+                                <input type="radio" name="theme" value="dark" class="radio radio-primary" {% if session.get('theme', 'light') == 'dark' %}checked{% endif %} />
+                            </label>
+                            <label class="label cursor-pointer">
+                                <span class="label-text">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    System Default
+                                </span>
+                                <input type="radio" name="theme" value="system" class="radio radio-primary" {% if session.get('theme', 'light') == 'system' %}checked{% endif %} />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Analysis Settings -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h3 class="card-title">Risk Analysis Settings</h3>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Risk-Free Rate</span>
+                            <span class="label-text-alt">Used for Sharpe ratio calculations</span>
+                        </label>
+                        <input type="number" step="0.001" min="0" max="1" name="risk_free_rate" placeholder="e.g., 0.02" class="input input-bordered" value="{{ session.get('risk_free_rate', '0.02') }}" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-6">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
+    </form>
+
+    <!-- Cache Management -->
+    <div class="card bg-base-100 shadow-xl mt-6">
+        <div class="card-body">
+            <h3 class="card-title">Cache Management</h3>
+            <p class="text-sm opacity-70 mb-4">Clear cached stock data to force fresh API calls</p>
+            <form method="POST" action="{{ url_for('clear_cache') }}" style="display:inline;">
+                <button type="submit" class="btn btn-warning btn-sm">Clear Cache</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

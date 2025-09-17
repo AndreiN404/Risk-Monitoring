@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Analysis - Risk Engine{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold">Individual Stock Analysis</h2>
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+            </svg>
+            Back to Dashboard
+        </a>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'error' if category == 'error' else 'info' }} shadow-lg mb-4">
+                    <div>
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="mb-4">
+        <div class="form-control w-full max-w-xs">
+            <label class="label">
+                <span class="label-text">Enter Stock Ticker</span>
+            </label>
+            <input type="text" name="ticker" placeholder="e.g., AAPL" class="input input-bordered w-full max-w-xs" value="{{ ticker or '' }}" />
+            <button type="submit" class="btn btn-primary mt-2">Analyze</button>
+        </div>
+    </form>
+
+    {% if results %}
+    <!-- Price Chart Section -->
+    <div class="card bg-base-100 shadow-xl mb-6">
+        <div class="card-body">
+            <h3 class="card-title flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 mr-2 text-primary">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.94M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{ ticker }} Price Chart (1 Year)
+                <div class="badge badge-primary badge-sm ml-2">INTERACTIVE</div>
+            </h3>
+            
+            <!-- Chart container -->
+            <div id="chart-loading" class="flex items-center justify-center h-96">
+                <div class="text-center">
+                    <div class="loading loading-spinner loading-lg text-primary mb-4"></div>
+                    <p class="text-gray-600">Loading chart data...</p>
+                </div>
+            </div>
+            <div id="price-chart" style="height: 400px; width: 100%; display: none;"></div>
+            <div id="chart-error" style="display: none;" class="alert alert-error">
+                <div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span id="chart-error-message">Failed to load chart data</span>
+                </div>
+            </div>
+            
+            <!-- Chart controls -->
+            <div class="flex gap-2 mt-4">
+                <button class="btn btn-sm btn-outline" onclick="toggleChartType()">
+                    <span id="chart-type-text">Switch to Line</span>
+                </button>
+                <button class="btn btn-sm btn-outline" onclick="toggleVolume()">
+                    <span id="volume-text">Hide Volume</span>
+                </button>
+                <button class="btn btn-sm btn-outline" onclick="resetChart()">Reset Zoom</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl mt-6">
+        <div class="card-body">
+            <h3 class="card-title">Analysis for {{ ticker }}</h3>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if results['Annualized Return'] is not none %}
+                        <tr>
+                            <td>Annualized Return</td>
+                            <td>{{ "%.2f"|format(results['Annualized Return'] * 100) }}%</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Annualized Volatility'] is not none %}
+                        <tr>
+                            <td>Annualized Volatility</td>
+                            <td>{{ "%.2f"|format(results['Annualized Volatility'] * 100) }}%</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['VaR (95%)'] is not none %}
+                        <tr>
+                            <td>Value at Risk (95%)</td>
+                            <td>{{ "%.2f"|format(results['VaR (95%)'] * 100) }}%</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['VaR (99%)'] is not none %}
+                        <tr>
+                            <td>Value at Risk (99%)</td>
+                            <td>{{ "%.2f"|format(results['VaR (99%)'] * 100) }}%</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['ES (95%)'] is not none %}
+                        <tr>
+                            <td>Expected Shortfall (95%)</td>
+                            <td>{{ "%.2f"|format(results['ES (95%)'] * 100) }}%</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['ES (99%)'] is not none %}
+                        <tr>
+                            <td>Expected Shortfall (99%)</td>
+                            <td>{{ "%.2f"|format(results['ES (99%)'] * 100) }}%</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Sharpe Ratio'] is not none %}
+                        <tr>
+                            <td>Sharpe Ratio</td>
+                            <td>{{ "%.3f"|format(results['Sharpe Ratio']) }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Sortino Ratio'] is not none %}
+                        <tr>
+                            <td>Sortino Ratio</td>
+                            <td>{{ "%.3f"|format(results['Sortino Ratio']) }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Calmar Ratio'] is not none %}
+                        <tr>
+                            <td>Calmar Ratio</td>
+                            <td>{{ "%.3f"|format(results['Calmar Ratio']) }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Beta (vs SPY)'] is not none %}
+                        <tr>
+                            <td>Beta (vs SPY)</td>
+                            <td>{{ "%.3f"|format(results['Beta (vs SPY)']) }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Maximum Drawdown'] is not none %}
+                        <tr>
+                            <td>Maximum Drawdown</td>
+                            <td>{{ "%.2f"|format(results['Maximum Drawdown'] * 100) }}%</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Skewness'] is not none %}
+                        <tr>
+                            <td>Skewness</td>
+                            <td>{{ "%.3f"|format(results['Skewness']) }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if results['Kurtosis'] is not none %}
+                        <tr>
+                            <td>Kurtosis</td>
+                            <td>{{ "%.3f"|format(results['Kurtosis']) }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Include TradingView Lightweight Charts -->
+<script src="{{ url_for('serve_lightweight_charts') }}"></script>
+
+{% if results and chart_data %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if lightweight-charts library is loaded
+    if (typeof LightweightCharts === 'undefined') {
+        console.error('LightweightCharts library not loaded');
+        const loadingEl = document.getElementById('chart-loading');
+        const errorEl = document.getElementById('chart-error');
+        const errorMsgEl = document.getElementById('chart-error-message');
+        
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorMsgEl) errorMsgEl.textContent = 'Chart library failed to load. Please refresh the page.';
+        if (errorEl) errorEl.style.display = 'block';
+        return;
+    }
+    
+    // Chart data from backend
+    const chartData = {{ chart_data | tojson | safe }};
+    
+    console.log('Chart data received:', chartData);
+    
+    // Get DOM elements
+    const loadingEl = document.getElementById('chart-loading');
+    const chartEl = document.getElementById('price-chart');
+    const errorEl = document.getElementById('chart-error');
+    const errorMsgEl = document.getElementById('chart-error-message');
+    
+    // Hide loading state
+    if (loadingEl) loadingEl.style.display = 'none';
+    
+    // Check for errors
+    if (chartData.error) {
+        console.error('Chart data error:', chartData.error);
+        if (errorMsgEl) errorMsgEl.textContent = chartData.error;
+        if (errorEl) errorEl.style.display = 'block';
+        if (chartEl) chartEl.style.display = 'none';
+        return;
+    }
+    
+    // Check if we have data
+    if (!chartData.candlestick || chartData.candlestick.length === 0) {
+        console.error('No candlestick data available');
+        if (errorMsgEl) errorMsgEl.textContent = 'No chart data available for ' + chartData.ticker;
+        if (errorEl) errorEl.style.display = 'block';
+        if (chartEl) chartEl.style.display = 'none';
+        return;
+    }
+    
+    // Show chart container
+    if (chartEl) chartEl.style.display = 'block';
+    
+    console.log('Initializing chart with', chartData.candlestick.length, 'data points');
+    
+    try {
+        // Create the chart
+        const chartContainer = document.getElementById('price-chart');
+        if (!chartContainer) {
+            throw new Error('Chart container not found');
+        }
+        
+        const chart = LightweightCharts.createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: 400,
+            layout: {
+                background: { color: 'transparent' },
+                textColor: '#374151',
+                fontSize: 12,
+            },
+            grid: {
+                vertLines: {
+                    color: '#e5e7eb',
+                    style: 1,
+                },
+                horzLines: {
+                    color: '#e5e7eb',
+                    style: 1,
+                },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+                vertLine: {
+                    color: '#6b7280',
+                    width: 1,
+                    style: 3,
+                },
+                horzLine: {
+                    color: '#6b7280',
+                    width: 1,
+                    style: 3,
+                },
+            },
+            rightPriceScale: {
+                borderColor: '#d1d5db',
+                textColor: '#374151',
+            },
+            timeScale: {
+                borderColor: '#d1d5db',
+                textColor: '#374151',
+                timeVisible: true,
+                secondsVisible: false,
+                fixLeftEdge: false,
+                fixRightEdge: false,
+                lockVisibleTimeRangeOnResize: false,
+                barSpacing: 6,
+                minBarSpacing: 0.5,
+            },
+            handleScroll: {
+                mouseWheel: true,
+                pressedMouseMove: true,
+            },
+            handleScale: {
+                axisPressedMouseMove: true,
+                mouseWheel: true,
+                pinch: true,
+            },
+        });
+
+        // Add candlestick series using v5.x API
+        const candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor: '#10b981', // emerald-500
+            downColor: '#ef4444', // red-500
+            borderUpColor: '#059669', // emerald-600
+            borderDownColor: '#dc2626', // red-600
+            wickUpColor: '#059669', // emerald-600
+            wickDownColor: '#dc2626', // red-600
+        });
+
+        // Add volume series using v5.x API
+        const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+            color: '#3b82f6', // blue-500
+            priceFormat: {
+                type: 'volume',
+            },
+            priceScaleId: 'volume',
+        });
+
+        // Configure volume price scale
+        chart.priceScale('volume').applyOptions({
+            scaleMargins: {
+                top: 0.8,
+                bottom: 0,
+            },
+        });        // Set data
+        console.log('Setting candlestick data...');
+        console.log('Candlestick data length:', chartData.candlestick.length);
+        console.log('First 3 candlestick points:', chartData.candlestick.slice(0, 3));
+        console.log('Last 3 candlestick points:', chartData.candlestick.slice(-3));
+        
+        if (chartData.candlestick && chartData.candlestick.length > 0) {
+            // Sort data by time (string dates should sort correctly)
+            const sortedCandlestickData = chartData.candlestick.sort((a, b) => {
+                return a.time.localeCompare(b.time);
+            });
+            console.log('Data sorted, setting on series...');
+            console.log('Sample sorted data:', sortedCandlestickData.slice(0, 5));
+            
+            try {
+                candlestickSeries.setData(sortedCandlestickData);
+                console.log('Candlestick data set successfully');
+            } catch (error) {
+                console.error('Error setting candlestick data:', error);
+                console.log('Problematic data sample:', sortedCandlestickData[0]);
+            }
+        }
+        
+        console.log('Setting volume data...');
+        console.log('Volume data length:', chartData.volume.length);
+        if (chartData.volume && chartData.volume.length > 0) {
+            // Sort volume data by time as well (string dates)
+            const sortedVolumeData = chartData.volume.sort((a, b) => {
+                return a.time.localeCompare(b.time);
+            });
+            
+            try {
+                volumeSeries.setData(sortedVolumeData);
+                console.log('Volume data set successfully');
+            } catch (error) {
+                console.error('Error setting volume data:', error);
+            }
+        }
+        
+        // Fit chart to data
+        chart.timeScale().fitContent();
+        console.log('Chart initialized successfully');
+        
+    } catch (error) {
+        console.error('Error creating chart:', error);
+        if (errorMsgEl) errorMsgEl.textContent = 'Failed to create chart: ' + error.message;
+        if (errorEl) errorEl.style.display = 'block';
+        if (chartEl) chartEl.style.display = 'none';
+        return;
+    }    // Chart control variables
+    let isLineSeries = false;
+    let volumeVisible = true;
+    let lineSeries = null;
+
+    // Chart control functions
+    function toggleChartType() {
+        const chartTypeText = document.getElementById('chart-type-text');
+        
+        if (!isLineSeries) {
+            // Switch to line chart
+            chart.removeSeries(candlestickSeries);
+            lineSeries = chart.addSeries(LightweightCharts.LineSeries, {
+                color: '#3b82f6', // blue-500
+                lineWidth: 2,
+                lineType: 0, // Simple line
+                crosshairMarkerVisible: true,
+                crosshairMarkerRadius: 4,
+                crosshairMarkerBorderColor: '#1d4ed8', // blue-700
+                crosshairMarkerBackgroundColor: '#3b82f6', // blue-500
+            });
+            
+            // Convert candlestick data to line data (using close prices)
+            const lineData = chartData.candlestick.map(item => ({
+                time: item.time,
+                value: item.close
+            })).sort((a, b) => a.time.localeCompare(b.time));
+            lineSeries.setData(lineData);
+            
+            chartTypeText.textContent = 'Switch to Candlestick';
+            isLineSeries = true;
+        } else {
+            // Switch back to candlestick
+            if (lineSeries) {
+                chart.removeSeries(lineSeries);
+                lineSeries = null;
+            }
+            
+            const newCandlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+                upColor: '#10b981', // emerald-500  
+                downColor: '#ef4444', // red-500
+                borderUpColor: '#059669', // emerald-600
+                borderDownColor: '#dc2626', // red-600
+                wickUpColor: '#059669', // emerald-600
+                wickDownColor: '#dc2626', // red-600
+            });
+            newCandlestickSeries.setData(chartData.candlestick);
+            
+            chartTypeText.textContent = 'Switch to Line';
+            isLineSeries = false;
+        }
+    }
+
+    function toggleVolume() {
+        const volumeText = document.getElementById('volume-text');
+        
+        if (volumeVisible) {
+            volumeSeries.applyOptions({
+                visible: false,
+            });
+            volumeText.textContent = 'Show Volume';
+            volumeVisible = false;
+        } else {
+            volumeSeries.applyOptions({
+                visible: true,
+            });
+            volumeText.textContent = 'Hide Volume';
+            volumeVisible = true;
+        }
+    }
+
+    function resetChart() {
+        chart.timeScale().fitContent();
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        chart.applyOptions({ width: chartContainer.clientWidth });
+    });
+
+    // Add crosshair move handler for price display
+    chart.subscribeCrosshairMove(function(param) {
+        if (!param.time) {
+            return;
+        }
+        
+        // You can add price display logic here if needed
+        console.log('Price at crosshair:', param.seriesPrices);
+    });
+    
+}); // End DOMContentLoaded
+</script>
+{% else %}
+<script>
+    // No chart data available
+    document.addEventListener('DOMContentLoaded', function() {
+        const loadingEl = document.getElementById('chart-loading');
+        const errorEl = document.getElementById('chart-error');
+        const errorMsgEl = document.getElementById('chart-error-message');
+        
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) {
+            errorEl.style.display = 'block';
+            if (errorMsgEl) errorMsgEl.textContent = 'No data available for chart display';
+        }
+    });
+</script>
+{% endif %}
+
+{% endblock %}
