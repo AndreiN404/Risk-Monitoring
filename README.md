@@ -39,21 +39,17 @@ A Flask-based portfolio risk management application with real-time analytics and
 
 2. **Install dependencies**- **DaisyUI**: Beautiful component library
 
-   ```bash- **TradingView Lightweight Charts**: Professional charting library
-
-   pip install -r requirements.txt- **Vanilla JavaScript**: Efficient client-side interactions
-
+   ```bash
+   pip install -r requirements.txt
    ```
 
 ### Database Schema
 
 3. **Run application**- **Portfolio**: Portfolio metadata and configuration
 
-   ```bash- **PortfolioAsset**: Individual asset holdings with dynamic weights
-
-   python app_modular.py- **StockData**: Historical price data cache
-
-   ```- **StockAnalysisCache**: Analysis results cache for performance
+   ```bash
+   python app.py
+   ```
 
 - **PortfolioMetrics**: Historical performance tracking
 
@@ -111,26 +107,21 @@ Set optional environment variables:
 3. **Install dependencies**
 
 ```bash 
-ALPHA_VANTAGE_API_KEY=your_key_here   
 pip install flask flask-sqlalchemy pandas numpy yfinance alpha-vantage beautifulsoup4 requests
-
-SECRET_KEY=your_secret_key  
 ```
 
 
 4. **Set environment variables (optional)**
-
-
-**Professional portfolio management with intelligent risk assessment**   # Windows
-   set ALPHA_VANTAGE_API_KEY=your_api_key_here
-   # macOS/Linux
-   export ALPHA_VANTAGE_API_KEY=your_api_key_here
+```bash 
+ALPHA_VANTAGE_API_KEY=your_key_here   
+SECRET_KEY=your_secret_key  
+```
 
 
 5. **Run the application**
-   ```bash
-   python app.py
-   ```
+```bash
+python app.py
+```
 
 6. **Access the application**
    Open your browser to `http://127.0.0.1:5000`
