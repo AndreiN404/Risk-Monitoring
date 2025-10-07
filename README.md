@@ -120,7 +120,8 @@ Set optional environment variables:
 ALPHA_VANTAGE_API_KEY=your_key_here   
 pip install flask flask-sqlalchemy pandas numpy yfinance alpha-vantage beautifulsoup4 requests
 
-SECRET_KEY=your_secret_key  ```
+SECRET_KEY=your_secret_key  
+```
 
 
 4. **Set environment variables (optional)**
@@ -202,22 +203,6 @@ The application uses SQLite by default with the following file:
 - **API Rate Limits**: Intelligent throttling to respect provider limits
 
 ## Development
-
-### Project Structure
-```
-risk-engine/
-├── app.py                 # Main Flask application
-├── risk_engine.db         # SQLite database
-├── templates/            # HTML templates
-│   ├── base.html         # Base template with theming
-│   ├── index.html        # Dashboard
-│   ├── portfolio.html    # Portfolio management
-│   ├── analysis.html     # Stock analysis with charts
-│   └── settings.html     # Configuration and preferences
-├── static/              # Static assets
-├── instance/            # Instance-specific files
-└── env/                 # Virtual environment
-```
 
 ### Database Models
 - **Portfolio**: Portfolio metadata
