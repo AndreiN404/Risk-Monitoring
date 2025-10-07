@@ -24,7 +24,6 @@ A Flask-based portfolio risk management application with real-time analytics and
 ##  Technical Architecture
 
 1. **Clone and setup** 
-### Backend Stack
 
    ```bash
    git clone <repository>
@@ -32,11 +31,6 @@ A Flask-based portfolio risk management application with real-time analytics and
    python -m venv env
 
    ```
-   
-### Frontend Stack
-
-- **TailwindCSS**: Utility-first CSS framework
-- **DaisyUI**: Beautiful component library
 
 2. **Install dependencies**
 
@@ -44,43 +38,20 @@ A Flask-based portfolio risk management application with real-time analytics and
    pip install -r requirements.txt
    ```
 
-### Database Schema
-
-3. **Run application**- **Portfolio**: Portfolio metadata and configuration
+3. **Run application to test**
 
    ```bash
    python app.py
    ```
 
-- **PortfolioMetrics**: Historical performance tracking
-
-4. **Access dashboard**- **Snapshot**: Portfolio state snapshots
-
+4. **Access dashboard**
    ```
    http://127.0.0.1:5000 
    
    ```
 ## 🚀 Getting Started
 
-### Prerequisites
-
-##  Usage- Python 3.8+
-
-- Alpha Vantage API key (optional, falls back to Yahoo Finance)
-
-- **Portfolio**: Add assets with dollar amounts - weights auto-calculated
-
-- **Analytics**: Interactive TradingView charts and risk metrics  ### Installation
-
-- **Dashboard**: Real-time P&L and asset allocation visualization
-
-- **Settings**: Theme preferences and cache management1. **Clone the repository**
-
-   ```bash
-
-##  Architecture   git clone <repository-url>
-
-   
+##  Architecture 
 
 ``` cd risk-engine  ```
 
@@ -96,36 +67,13 @@ A Flask-based portfolio risk management application with real-time analytics and
 
 └── instance/               # Database storage   
 
-# macOS/Linux
-
-   source env/bin/activate
-
 ## ⚙️ Configuration
 
-
-Set optional environment variables:
-
-3. **Install dependencies**
-
-```bash 
-pip install flask flask-sqlalchemy pandas numpy yfinance alpha-vantage beautifulsoup4 requests
-```
-
-
-4. **Set environment variables (optional)**
+5. **Set environment variables (optional)**
 ```bash 
 ALPHA_VANTAGE_API_KEY=your_key_here   
 SECRET_KEY=your_secret_key  
 ```
-
-
-5. **Run the application**
-```bash
-python app.py
-```
-
-6. **Access the application**
-   Open your browser to `http://127.0.0.1:5000`
 
 ## 📋 Usage Guide
 
