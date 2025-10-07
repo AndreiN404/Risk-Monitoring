@@ -1,4 +1,4 @@
-# Risk Engine - Portfolio Risk Management# Risk Engine
+# Risk Engine - Portfolio Risk Management
 
 A Flask-based portfolio risk management application with real-time analytics and interactive charting. Features real-time market data, advanced risk analytics, and interactive dashboards for portfolio analysis.
 
@@ -23,7 +23,8 @@ A Flask-based portfolio risk management application with real-time analytics and
 
 ##  Technical Architecture
 
-1. **Clone and setup**### Backend Stack
+1. **Clone and setup** 
+### Backend Stack
 
    ```bash- **Flask**: Lightweight Python web framework
 
