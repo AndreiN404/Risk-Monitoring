@@ -1,109 +1,130 @@
-# Risk Engine
+# Risk Engine - Portfolio Risk Management# Risk Engine
 
-A comprehensive portfolio risk management and analysis platform built with Flask, featuring real-time market data, interactive charting, and sophisticated risk analytics.
+A Flask-based portfolio risk management application with real-time analytics and interactive charting. Features real-time market data, advanced risk analytics, and interactive dashboards for portfolio analysis.
 
-## 🚀 Features Overview
+## ✨ Key Features
 
-### 📊 Portfolio Management
-- **Asset Management**: Add/remove assets with support for multiple asset classes
-- **Real-time P&L Tracking**: Live profit/loss calculations with color-coded performance indicators
-- **Asset Class Diversification**: Track investments across US Equity, International Equity, Fixed Income, REITs, Commodities, Crypto, and Cash
-- **Preset Portfolios**: Quick-start with Conservative, Balanced, or Aggressive allocation templates
+- **Portfolio Management**: Auto-calculated portfolio weights from dollar allocations- **Portfolio Management** - Multi-asset portfolio tracking with real-time P&L
 
-### 📈 Interactive Charts & Analysis
-- **TradingView Lightweight Charts**: Professional-grade candlestick charts for historical price analysis
-- **Multi-timeframe Support**: View 1-day to 1-year historical data
-- **Volume Analysis**: Integrated volume charts with price data
-- **Chart Controls**: Interactive zooming, panning, and crosshair functionality
-- **Real-time Data Integration**: Live price updates with historical context
+- **Real-Time Analytics**: Live P&L tracking with asset class breakdown-  **Risk Analytics** - VaR, volatility, Sharpe ratio, correlation analysis
 
-### 🔍 Risk Analytics
-- **Portfolio Risk Metrics**: Comprehensive risk analysis including volatility, Sharpe ratio, and correlation matrices
-- **Individual Asset Analysis**: Detailed risk/return profiles for each holding
-- **Asset Class Breakdown**: Portfolio composition analysis by asset class
-- **Daily P&L Tracking**: Monitor daily portfolio performance changes
-- **Risk-Free Rate Configuration**: Customizable benchmark for Sharpe ratio calculations
+- **Interactive Charts**: TradingView integration for professional analysis-  **Live Market Data** - Alpha Vantage & Yahoo Finance integration
 
-### ⚡ Performance Optimization
-- **Multi-tier Caching System**: 
-  - Memory cache for immediate data access
-  - Database cache for persistent storage
-  - API fallback for fresh data
-- **Database-Backed Analysis Cache**: Stores analysis data for faster repeated lookups
-- **Smart Cache Management**: Automatic cache invalidation and manual cache clearing
-- **Rate Limit Protection**: Intelligent API usage to stay within provider limits
+- **Risk Assessment**: Sharpe ratios, correlations, and volatility metrics-  **Asset Diversification** - Class breakdown and allocation analysis
 
-### 🎨 User Experience
-- **Light/Dark Theme Toggle**: 
-  - Three theme options: Light, Dark, System Default
-  - Instant theme switching via navbar dropdown
-  - System preference detection and auto-switching
-  - Persistent theme preferences across sessions
-- **Responsive Design**: Mobile-friendly interface using DaisyUI components
-- **Real-time Updates**: AJAX-powered features for seamless user experience
-- **Flash Messaging**: Clear feedback for user actions and system status
+- **Multi-Source Data**: Alpha Vantage API with Yahoo Finance fallback- **Modular Architecture** - Clean separation of models, services, and routes
 
-### 📡 Data Sources & Integration
-- **Alpha Vantage API**: Professional market data for comprehensive analysis
-- **Yahoo Finance (yfinance)**: Reliable backup data source
-- **Live Price Feeds**: Real-time market data integration
-- **Historical Data**: Up to 1 year of daily OHLCV data
-- **Multi-symbol Support**: Simultaneous tracking of multiple assets
+- **Smart Caching**: Multi-tier caching for optimal performance-  **Smart Caching** - Multi-tier caching for optimal performance
 
-## 🏗️ Technical Architecture
+- **Theme System**: Light/Dark themes with system preference support- **Multi-symbol Support**: Simultaneous tracking of multiple assets
 
-### Backend Stack
-- **Flask**: Lightweight Python web framework
-- **SQLAlchemy**: Database ORM with SQLite backend
-- **Pandas & NumPy**: Advanced data manipulation and numerical computing
-- **yfinance**: Yahoo Finance API integration
-- **Alpha Vantage**: Professional market data API
 
-### Frontend Stack
+##  Quick Start##  Technical Architecture
+
+1. **Clone and setup**### Backend Stack
+
+   ```bash- **Flask**: Lightweight Python web framework
+
+   git clone <repository>- **SQLAlchemy**: Database ORM with SQLite backend
+
+   cd risk-engine- **Pandas & NumPy**: Advanced data manipulation and numerical computing
+
+   python -m venv env- **yfinance**: Yahoo Finance API integration
+
+   # Windows: .\env\Scripts\activate- **Alpha Vantage**: Professional market data API
+
+   # Linux/Mac: source env/bin/activate
+
+   ```### Frontend Stack
+
 - **TailwindCSS**: Utility-first CSS framework
-- **DaisyUI**: Beautiful component library
-- **TradingView Lightweight Charts**: Professional charting library
-- **Vanilla JavaScript**: Efficient client-side interactions
+
+2. **Install dependencies**- **DaisyUI**: Beautiful component library
+
+   ```bash- **TradingView Lightweight Charts**: Professional charting library
+
+   pip install -r requirements.txt- **Vanilla JavaScript**: Efficient client-side interactions
+
+   ```
 
 ### Database Schema
-- **Portfolio**: Portfolio metadata and configuration
-- **PortfolioAsset**: Individual asset holdings with dynamic weights
-- **StockData**: Historical price data cache
-- **StockAnalysisCache**: Analysis results cache for performance
-- **PortfolioMetrics**: Historical performance tracking
-- **Snapshot**: Portfolio state snapshots
 
-## 🚀 Getting Started
+3. **Run application**- **Portfolio**: Portfolio metadata and configuration
+
+   ```bash- **PortfolioAsset**: Individual asset holdings with dynamic weights
+
+   python app_modular.py- **StockData**: Historical price data cache
+
+   ```- **StockAnalysisCache**: Analysis results cache for performance
+
+- **PortfolioMetrics**: Historical performance tracking
+
+4. **Access dashboard**- **Snapshot**: Portfolio state snapshots
+
+   ```
+
+   http://127.0.0.1:5000 
+   ## 🚀 Getting Started
+
+   ```
 
 ### Prerequisites
-- Python 3.8+
+
+##  Usage- Python 3.8+
+
 - Alpha Vantage API key (optional, falls back to Yahoo Finance)
 
-### Installation
+- **Portfolio**: Add assets with dollar amounts - weights auto-calculated
 
-1. **Clone the repository**
+- **Analytics**: Interactive TradingView charts and risk metrics  ### Installation
+
+- **Dashboard**: Real-time P&L and asset allocation visualization
+
+- **Settings**: Theme preferences and cache management1. **Clone the repository**
+
    ```bash
-   git clone <repository-url>
+
+##  Architecture   git clone <repository-url>
+
    cd risk-engine
-   ```
 
-2. **Create virtual environment**
-   ```bash
-   python -m venv env
-   # Windows
-   .\env\Scripts\activate
-   # macOS/Linux
+```   ```
+
+├── app_modular.py          # Main Flask application
+
+├── models/                 # Database models2. **Create virtual environment**
+
+├── services/               # Business logic   ```bash
+
+├── routes/                 # API endpoints   python -m venv env
+
+├── templates/              # Jinja2 templates   # Windows
+
+└── instance/               # Database storage   .\env\Scripts\activate
+
+```   # macOS/Linux
+
    source env/bin/activate
-   ```
 
-3. **Install dependencies**
-   ```bash
-   pip install flask flask-sqlalchemy pandas numpy yfinance alpha-vantage beautifulsoup4 requests
-   ```
+## ⚙️ Configuration   ```
+
+
+
+Set optional environment variables:3. **Install dependencies**
+
+```bash   ```bash
+
+ALPHA_VANTAGE_API_KEY=your_key_here   pip install flask flask-sqlalchemy pandas numpy yfinance alpha-vantage beautifulsoup4 requests
+
+SECRET_KEY=your_secret_key   ```
+
+```
 
 4. **Set environment variables (optional)**
-   ```bash
-   # Windows
+
+---   ```bash
+
+**Professional portfolio management with intelligent risk assessment**   # Windows
    set ALPHA_VANTAGE_API_KEY=your_api_key_here
    # macOS/Linux
    export ALPHA_VANTAGE_API_KEY=your_api_key_here
@@ -208,7 +229,7 @@ Comprehensive theming with system integration:
 - **System Default**: Automatically follows your OS preference
 - **Instant Switching**: No page refresh required
 
-## 🛠️ Development
+## Development
 
 ### Project Structure
 ```
@@ -239,14 +260,14 @@ risk-engine/
 - **Rate Limiting**: Intelligent request throttling
 - **Error Handling**: Graceful degradation when APIs are unavailable
 
-## 🔒 Security Considerations
+## Security Considerations
 
 - **Session Management**: Secure session handling for user preferences
 - **API Key Protection**: Environment variable storage for sensitive keys
 - **Input Validation**: Comprehensive validation for all user inputs
 - **Error Handling**: Graceful error handling without exposing internals
 
-## 🚀 Future Enhancements
+## Future Enhancements
 
 - **User Authentication**: Multi-user support with secure login
 - **Advanced Analytics**: Monte Carlo simulations, VaR calculations
