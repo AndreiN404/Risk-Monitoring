@@ -36,8 +36,9 @@ A Flask-based portfolio risk management application with real-time analytics and
 ### Frontend Stack
 
 - **TailwindCSS**: Utility-first CSS framework
+- **DaisyUI**: Beautiful component library
 
-2. **Install dependencies**- **DaisyUI**: Beautiful component library
+2. **Install dependencies**
 
    ```bash
    pip install -r requirements.txt
