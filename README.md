@@ -95,17 +95,17 @@ A Flask-based portfolio risk management application with real-time analytics and
 
 ├── app_modular.py          # Main Flask application
 
-├── models/                 # Database models2. **Create virtual environment**
+├── models/                 # Database models
 
-├── services/               # Business logic   ```bash
+├── services/               # Business logic   
 
-├── routes/                 # API endpoints   python -m venv env
+├── routes/                 # API endpoints 
 
-├── templates/              # Jinja2 templates   # Windows
+├── templates/              # Jinja2 templates  
 
-└── instance/               # Database storage   .\env\Scripts\activate
+└── instance/               # Database storage   
 
-```   # macOS/Linux
+# macOS/Linux
 
    source env/bin/activate
 
@@ -116,13 +116,12 @@ Set optional environment variables:
 
 3. **Install dependencies**
 
-```bash   ```bash
+```bash 
+ALPHA_VANTAGE_API_KEY=your_key_here   
+pip install flask flask-sqlalchemy pandas numpy yfinance alpha-vantage beautifulsoup4 requests
 
-ALPHA_VANTAGE_API_KEY=your_key_here   pip install flask flask-sqlalchemy pandas numpy yfinance alpha-vantage beautifulsoup4 requests
+SECRET_KEY=your_secret_key  ```
 
-SECRET_KEY=your_secret_key   ```
-
-```
 
 4. **Set environment variables (optional)**
 
