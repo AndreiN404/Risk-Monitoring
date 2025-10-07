@@ -2,7 +2,7 @@
 
 A Flask-based portfolio risk management application with real-time analytics and interactive charting. Features real-time market data, advanced risk analytics, and interactive dashboards for portfolio analysis.
 
-## ✨ Key Features
+## Key Features
 
 - **Portfolio Management**: Auto-calculated portfolio weights from dollar allocations- **Portfolio Management** - Multi-asset portfolio tracking with real-time P&L
 
@@ -199,36 +199,6 @@ The application uses SQLite by default with the following file:
 - **Database Cache**: 24-hour persistence for analysis data
 - **API Rate Limits**: Intelligent throttling to respect provider limits
 
-## 🎯 Key Features Deep Dive
-
-### Dynamic Portfolio Weights
-Unlike traditional portfolio managers that require manual weight entry, Risk Engine automatically calculates portfolio weights based on your dollar allocations:
-
-- **Add $50,000 AAPL + $30,000 GOOGL + $20,000 BND = 50%/30%/20% allocation**
-- **Automatic rebalancing** when assets are added or removed
-- **Real-time weight updates** maintaining 100% allocation
-
-### Interactive Charting
-Powered by TradingView Lightweight Charts for professional-grade analysis:
-- **Candlestick charts** with OHLC data
-- **Volume indicators** synchronized with price action
-- **Interactive controls** for zooming and crosshair analysis
-- **Mobile-responsive** design for analysis on any device
-
-### Multi-tier Caching
-Sophisticated caching system for optimal performance:
-1. **Memory Cache**: Instant access to recently fetched data
-2. **Database Cache**: Persistent storage for historical analysis
-3. **API Fallback**: Fresh data when cache expires
-4. **Smart Invalidation**: Automatic cache refresh and manual clearing
-
-### Theme System
-Comprehensive theming with system integration:
-- **Light Theme**: Clean, professional appearance for daytime use
-- **Dark Theme**: Reduced eye strain for late-night trading
-- **System Default**: Automatically follows your OS preference
-- **Instant Switching**: No page refresh required
-
 ## Development
 
 ### Project Structure
@@ -275,5 +245,3 @@ risk-engine/
 - **Alert System**: Price and risk threshold notifications
 - **Export Features**: PDF reports and CSV data exports
 - **Mobile App**: Native mobile application for portfolio monitoring
-
-**Risk Engine** - Professional Portfolio Risk Management Made Simple
