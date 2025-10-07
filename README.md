@@ -26,17 +26,10 @@ A Flask-based portfolio risk management application with real-time analytics and
 1. **Clone and setup** 
 ### Backend Stack
 
-   ```bash- **Flask**: Lightweight Python web framework
-
-   git clone <repository>- **SQLAlchemy**: Database ORM with SQLite backend
-
-   cd risk-engine- **Pandas & NumPy**: Advanced data manipulation and numerical computing
-
-   python -m venv env- **yfinance**: Yahoo Finance API integration
-
-   # Windows: .\env\Scripts\activate- **Alpha Vantage**: Professional market data API
-
-   # Linux/Mac: source env/bin/activate
+   ```bash
+   git clone <repository>
+   cd risk-engine
+   python -m venv env
 
    ```
    
