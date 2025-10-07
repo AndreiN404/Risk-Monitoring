@@ -19,7 +19,9 @@ A Flask-based portfolio risk management application with real-time analytics and
 - **Theme System**: Light/Dark themes with system preference support- **Multi-symbol Support**: Simultaneous tracking of multiple assets
 
 
-##  Quick Start##  Technical Architecture
+##  Quick Start
+
+##  Technical Architecture
 
 1. **Clone and setup**### Backend Stack
 
@@ -35,7 +37,9 @@ A Flask-based portfolio risk management application with real-time analytics and
 
    # Linux/Mac: source env/bin/activate
 
-   ```### Frontend Stack
+   ```
+   
+### Frontend Stack
 
 - **TailwindCSS**: Utility-first CSS framework
 
@@ -62,11 +66,10 @@ A Flask-based portfolio risk management application with real-time analytics and
 4. **Access dashboard**- **Snapshot**: Portfolio state snapshots
 
    ```
-
    http://127.0.0.1:5000 
-   ## 🚀 Getting Started
-
+   
    ```
+## 🚀 Getting Started
 
 ### Prerequisites
 
@@ -86,9 +89,9 @@ A Flask-based portfolio risk management application with real-time analytics and
 
 ##  Architecture   git clone <repository-url>
 
-   cd risk-engine
+   
 
-```   ```
+``` cd risk-engine  ```
 
 ├── app_modular.py          # Main Flask application
 
@@ -106,11 +109,12 @@ A Flask-based portfolio risk management application with real-time analytics and
 
    source env/bin/activate
 
-## ⚙️ Configuration   ```
+## ⚙️ Configuration
 
 
+Set optional environment variables:
 
-Set optional environment variables:3. **Install dependencies**
+3. **Install dependencies**
 
 ```bash   ```bash
 
@@ -122,13 +126,12 @@ SECRET_KEY=your_secret_key   ```
 
 4. **Set environment variables (optional)**
 
----   ```bash
 
 **Professional portfolio management with intelligent risk assessment**   # Windows
    set ALPHA_VANTAGE_API_KEY=your_api_key_here
    # macOS/Linux
    export ALPHA_VANTAGE_API_KEY=your_api_key_here
-   ```
+
 
 5. **Run the application**
    ```bash
