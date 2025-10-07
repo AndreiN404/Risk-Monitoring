@@ -21,7 +21,7 @@
     {% if not dashboard_data %}
     <div class="alert alert-warning shadow-lg mb-4">
         <div>
-            <span>No portfolio data available. <a href="{{ url_for('portfolio_manager') }}" class="btn btn-sm btn-primary">Add some assets to get started</a></span>
+            <span>No portfolio data available. <a href="{{ url_for('portfolio.portfolio_manager') }}" class="btn btn-sm btn-primary">Add some assets to get started</a></span>
         </div>
     </div>
     {% else %}
@@ -32,7 +32,7 @@
             <div class="max-w-md">
                 <h1 class="text-5xl font-bold">Welcome!</h1>
                 <p class="py-6">Create your first portfolio to see comprehensive risk analytics and performance metrics on this dashboard.</p>
-                <a href="{{ url_for('portfolio_manager') }}" class="btn btn-primary">Create Portfolio</a>
+                <a href="{{ url_for('portfolio.portfolio_manager') }}" class="btn btn-primary">Create Portfolio</a>
             </div>
         </div>
     </div>
@@ -126,7 +126,7 @@
                         </svg>
                         Refresh
                     </button>
-                    <button onclick="window.location.href='{{ url_for('index') }}?force_refresh=1'" class="btn btn-sm btn-outline btn-secondary">
+                    <button onclick="window.location.href='{{ url_for('main.index') }}?force_refresh=1'" class="btn btn-sm btn-outline btn-secondary">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                         </svg>
@@ -226,7 +226,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                     <p class="text-gray-600 mb-4">No portfolio stocks to analyze yet.</p>
-                    <a href="{{ url_for('portfolio_manager') }}" class="btn btn-primary">Add Stocks to Portfolio</a>
+                    <a href="{{ url_for('portfolio.portfolio_manager') }}" class="btn btn-primary">Add Stocks to Portfolio</a>
                 </div>
                 {% endif %}
             </div>
@@ -405,11 +405,11 @@
                                 <td>{{ class_name }}</td>
                                 <td>
                                     <div class="flex items-center gap-2">
-                                        <progress class="progress progress-primary w-20" value="{{ data.weight * 100 }}" max="100"></progress>
-                                        {{ "%.1f"|format(data.weight * 100) }}%
+                                        <progress class="progress progress-primary w-20" value="{{ data['total_allocation'] }}" max="100"></progress>
+                                        {{ "%.1f"|format(data['total_allocation']) }}%
                                     </div>
                                 </td>
-                                <td>{{ data.count }}</td>
+                                <td>{{ data['count'] }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

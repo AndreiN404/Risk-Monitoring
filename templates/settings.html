@@ -18,7 +18,7 @@
         {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('settings') }}">
+    <form method="POST" action="{{ url_for('settings.settings') }}">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Theme Settings -->
             <div class="card bg-base-100 shadow-xl">
@@ -86,7 +86,7 @@
         <div class="card-body">
             <h3 class="card-title">Cache Management</h3>
             <p class="text-sm opacity-70 mb-4">Clear cached stock data to force fresh API calls</p>
-            <form method="POST" action="{{ url_for('clear_cache') }}" style="display:inline;">
+            <form method="POST" action="{{ url_for('main.clear_cache') }}" style="display:inline;">
                 <button type="submit" class="btn btn-warning btn-sm">Clear Cache</button>
             </form>
         </div>

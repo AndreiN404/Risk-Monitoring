@@ -79,14 +79,14 @@
         <li><a>Item 3</a></li>
       </ul>
     </div>
-    <a class="btn btn-ghost text-xl" href="{{ url_for('index') }}">Risk Engine</a>
+    <a class="btn btn-ghost text-xl" href="{{ url_for('main.index') }}">Risk Engine</a>
   </div>
   <div class="navbar-center hidden lg:flex">
     <ul class="menu menu-horizontal px-1">
-      <li><a href="{{ url_for('index') }}">Dashboard</a></li>
-      <li><a href="{{ url_for('portfolio_manager') }}">Portfolio</a></li>
-      <li><a href="{{ url_for('analysis') }}">Analysis</a></li>
-      <li><a href="{{ url_for('settings') }}">Settings</a></li>
+      <li><a href="{{ url_for('main.index') }}">Dashboard</a></li>
+      <li><a href="{{ url_for('portfolio.portfolio_manager') }}">Portfolio</a></li>
+      <li><a href="{{ url_for('analysis.analysis') }}">Analysis</a></li>
+      <li><a href="{{ url_for('settings.settings') }}">Settings</a></li>
     </ul>
   </div>
   <div class="navbar-end">

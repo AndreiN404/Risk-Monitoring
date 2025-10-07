@@ -1,5 +1,3 @@
-import os
-import numpy as np
 import pandas as pd
 from flask import Flask, render_template, request, session, redirect, url_for, flash
 import yfinance as yf
@@ -10,6 +8,8 @@ import warnings
 from datetime import datetime, timedelta
 import time
 import traceback
+import numpy as np
+import os
 
 warnings.filterwarnings('ignore')
 
