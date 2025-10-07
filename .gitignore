@@ -235,3 +235,4 @@ debug/
 # Jupyter notebooks with sensitive data
 *_with_api_keys.ipynb
 *_private.ipynb
+/node_modules
