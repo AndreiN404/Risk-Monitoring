@@ -9,9 +9,15 @@ def index():
     """Dashboard - Main page showing portfolio overview"""
     portfolio, total_current_value, total_cost, total_pnl = get_portfolio_data()
     
-    # Check if force refresh is requested
+    # Disable lightweight mode by default for now (turn off optimization until it's fixed)
+    # Users can enable with ?lightweight=1 if they want faster loads with cached data
+    lightweight = request.args.get('lightweight', '0') == '1'
     force_refresh = request.args.get('force_refresh', '0') == '1'
-    dashboard_data = calculate_portfolio_dashboard_data(force_refresh=force_refresh)
+    
+    dashboard_data = calculate_portfolio_dashboard_data(
+        force_refresh=force_refresh,
+        lightweight=lightweight
+    )
     
     return render_template('index.html', 
                          portfolio=portfolio, 

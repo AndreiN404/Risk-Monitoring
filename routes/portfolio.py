@@ -20,31 +20,34 @@ def add_asset():
     """Add asset to portfolio"""
     symbol = request.form.get('symbol', '').upper().strip()
     asset_class = request.form.get('asset_class')
-    allocation = float(request.form.get('allocation', 0))
+    allocation_str = request.form.get('allocation', '0')
     purchase_price = request.form.get('purchase_price')
     quantity = request.form.get('quantity')
     purchase_date = request.form.get('purchase_date')
     
-    if not symbol or not asset_class or allocation <= 0:
-        flash('Please fill in all fields with valid values.', 'error')
+    if not symbol or not asset_class:
+        flash('Please provide symbol and asset class.', 'error')
         return redirect(url_for('portfolio.portfolio_manager'))
     
     # Convert optional fields
     purchase_price_val = None
     quantity_val = None
     purchase_date_val = None
+    allocation = 0
     
     if purchase_price and purchase_price.strip():
         try:
             purchase_price_val = float(purchase_price)
         except ValueError:
-            pass
+            flash('Invalid purchase price.', 'error')
+            return redirect(url_for('portfolio.portfolio_manager'))
     
     if quantity and quantity.strip():
         try:
             quantity_val = float(quantity)
         except ValueError:
-            pass
+            flash('Invalid quantity.', 'error')
+            return redirect(url_for('portfolio.portfolio_manager'))
     
     if purchase_date and purchase_date.strip():
         try:
@@ -52,13 +55,33 @@ def add_asset():
         except ValueError:
             pass
     
-    # Validation: if purchase price is provided, quantity should be calculated or provided
-    if purchase_price_val and not quantity_val:
-        # Calculate quantity from allocation and purchase price
-        quantity_val = allocation / purchase_price_val
-    elif quantity_val and not purchase_price_val:
-        # Calculate purchase price from allocation and quantity
-        purchase_price_val = allocation / quantity_val
+    # Calculate allocation based on what's provided
+    if purchase_price_val and quantity_val:
+        # Best case: we have both price and quantity
+        allocation = purchase_price_val * quantity_val
+        print(f"Calculated allocation: ${purchase_price_val} × {quantity_val} = ${allocation}")
+    elif allocation_str and allocation_str.strip():
+        # User provided allocation manually (fallback mode)
+        try:
+            allocation = float(allocation_str)
+            if allocation <= 0:
+                flash('Allocation must be greater than 0.', 'error')
+                return redirect(url_for('portfolio.portfolio_manager'))
+            
+            # If we have price but no quantity, calculate quantity
+            if purchase_price_val and not quantity_val:
+                quantity_val = allocation / purchase_price_val
+                print(f"Calculated quantity: ${allocation} ÷ ${purchase_price_val} = {quantity_val} shares")
+            # If we have quantity but no price, calculate price
+            elif quantity_val and not purchase_price_val:
+                purchase_price_val = allocation / quantity_val
+                print(f"Calculated purchase price: ${allocation} ÷ {quantity_val} = ${purchase_price_val} per share")
+        except ValueError:
+            flash('Invalid allocation amount.', 'error')
+            return redirect(url_for('portfolio.portfolio_manager'))
+    else:
+        flash('Please provide either (purchase price AND quantity) OR allocation amount.', 'error')
+        return redirect(url_for('portfolio.portfolio_manager'))
     
     # Get or create portfolio
     portfolio = portfolio_service.get_or_create_default_portfolio()
@@ -85,7 +108,7 @@ def add_asset():
     )
     
     if success:
-        flash(f'{symbol} added to portfolio successfully!', 'success')
+        flash(f'{symbol} added to portfolio successfully! (${allocation:.2f})', 'success')
     else:
         flash(f'Error adding {symbol} to portfolio.', 'error')
     

@@ -132,52 +132,56 @@
                     
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text">Total Allocation ($)</span>
+                            <span class="label-text font-bold">Option 1: Total Allocation</span>
                         </label>
-                        <input type="number" name="allocation" step="0.01" min="0" placeholder="10000" class="input input-bordered" required />
+                        <input type="number" id="allocation" name="allocation" step="0.01" min="0" placeholder="10000" class="input input-bordered" />
                         <label class="label">
-                            <span class="label-text-alt">Weight will be calculated automatically</span>
+                            <span class="label-text-alt">Total $ amount invested (if not using price × quantity)</span>
                         </label>
                     </div>
                 </div>
                 
-                <div class="divider">Purchase Details (Optional for Accurate P&L)</div>
+                <div class="divider">OR</div>
+                
+                <div class="alert alert-info mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span><strong>For accurate P&L tracking:</strong> Provide purchase price AND quantity below. Allocation will be calculated automatically as price × quantity.</span>
+                </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text">Purchase Price ($)</span>
-                            <span class="label-text-alt">Price per share</span>
+                            <span class="label-text font-bold">Purchase Price ($)</span>
+                            <span class="label-text-alt">Price per share when bought</span>
                         </label>
-                        <input type="number" name="purchase_price" step="0.01" min="0" placeholder="150.00" class="input input-bordered" />
+                        <input type="number" name="purchase_price" step="0.01" min="0" placeholder="150.00" class="input input-bordered" id="purchase_price" />
                     </div>
                     
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text">Quantity</span>
-                            <span class="label-text-alt">Number of shares</span>
+                            <span class="label-text font-bold">Quantity (Shares)</span>
+                            <span class="label-text-alt">Number of shares owned</span>
                         </label>
-                        <input type="number" name="quantity" step="0.001" min="0" placeholder="66.67" class="input input-bordered" />
+                        <input type="number" name="quantity" step="0.001" min="0" placeholder="66.67" class="input input-bordered" id="quantity" />
                     </div>
                     
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text">Purchase Date</span>
+                            <span class="label-text">Purchase Date (Optional)</span>
                             <span class="label-text-alt">When you bought it</span>
                         </label>
                         <input type="date" name="purchase_date" class="input input-bordered" />
                     </div>
                 </div>
                 
-                <div class="alert alert-info mt-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div class="alert alert-warning mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
                     <div>
-                        <h4 class="font-bold">Purchase Details</h4>
+                        <h4 class="font-bold">How to enter your position:</h4>
                         <div class="text-sm">
-                            • Providing purchase price and quantity enables accurate P&L calculations<br>
-                            • If you provide price, quantity will be calculated (allocation ÷ price)<br>
-                            • If you provide quantity, price will be calculated (allocation ÷ quantity)<br>
-                            • Without these details, P&L will be estimated from recent price changes
+                            <strong>RECOMMENDED:</strong> Enter <strong>Purchase Price</strong> and <strong>Quantity</strong> (allocation will be calculated automatically as price × quantity)<br>
+                            <strong>OR</strong><br>
+                            <strong>FALLBACK:</strong> Enter only <strong>Allocation</strong> (P&L will be estimated, not exact)
                         </div>
                     </div>
                 </div>

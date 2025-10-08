@@ -6,7 +6,6 @@ from flask import Flask
 warnings.filterwarnings('ignore')
 
 def create_app(config_name='default'):
-    """Application factory pattern"""
     app = Flask(__name__)
     
     # Load configuration
@@ -19,10 +18,12 @@ def create_app(config_name='default'):
     
     # Register blueprints
     from routes import main_bp, portfolio_bp, analysis_bp, settings_bp
+    from routes.api import api_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(portfolio_bp)
     app.register_blueprint(analysis_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(api_bp)
     
     # Initialize database within app context
     with app.app_context():

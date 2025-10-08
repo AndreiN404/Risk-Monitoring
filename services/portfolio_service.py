@@ -70,7 +70,27 @@ class PortfolioService:
 
     @staticmethod
     def add_asset_to_portfolio(portfolio_id, symbol, asset_class, allocation, purchase_price=None, quantity=None, purchase_date=None):
-        """Add an asset to a portfolio"""
+        """Add an asset to a portfolio
+        
+        Args:
+            allocation: Total $ amount invested (optional if purchase_price and quantity provided)
+            purchase_price: Price per share when purchased
+            quantity: Number of shares
+            
+        Note: If purchase_price and quantity are provided, allocation is calculated automatically
+        """
+        # Calculate allocation from purchase_price × quantity if both provided
+        if purchase_price is not None and quantity is not None:
+            calculated_allocation = purchase_price * quantity
+            if allocation is None or allocation == 0:
+                allocation = calculated_allocation
+            else:
+                # If user provided allocation too, validate it matches
+                if abs(allocation - calculated_allocation) > 0.01:
+                    print(f"Warning: Provided allocation ${allocation} doesn't match purchase_price × quantity = ${calculated_allocation}")
+                    print(f"Using calculated allocation ${calculated_allocation}")
+                allocation = calculated_allocation
+        
         # Check if asset already exists in portfolio
         existing_asset = PortfolioAsset.query.filter_by(
             portfolio_id=portfolio_id, 
@@ -199,14 +219,148 @@ class PortfolioService:
 # Create a default instance
 portfolio_service = PortfolioService()
 
-def get_portfolio_data():
-    """Get current portfolio from database with accurate P&L calculation"""
+def get_live_prices_for_portfolio():
+    """Get live prices for all portfolio assets - optimized for async loading"""
+    import datetime
+    from services.data_service import data_service
+    
     portfolio = Portfolio.query.first()
+    if not portfolio:
+        return {'prices': {}, 'changes': {}, 'update_time': None}
+    
+    assets = PortfolioAsset.query.filter_by(portfolio_id=portfolio.id).all()
+    if not assets:
+        return {'prices': {}, 'changes': {}, 'update_time': None}
+    
+    live_prices = {}
+    price_changes = {}
+    
+    # Use batch fetching if possible
+    symbols = [asset.symbol for asset in assets]
+    cache_key = f"live_prices_{'-'.join(sorted(symbols))}"
+    
+    # Check cache first (5 minute expiry for live prices)
+    if hasattr(data_service, '_data_cache') and cache_key in data_service._data_cache:
+        cached_data, cached_time = data_service._data_cache[cache_key]
+        if (datetime.datetime.now() - cached_time).seconds < 300:  # 5 minutes
+            return cached_data
+    
+    try:
+        # Fetch all prices in batch if possible
+        for asset in assets:
+            try:
+                # Use daily data instead of 1-minute for faster loading
+                current_data = data_service.fetch_stock_data([asset.symbol], period="5d")
+                if not current_data.empty and 'Close' in current_data.columns:
+                    if hasattr(current_data['Close'], 'columns') and asset.symbol in current_data['Close'].columns:
+                        prices = current_data['Close'][asset.symbol]
+                    else:
+                        prices = current_data['Close']
+                    
+                    current_price = float(prices.iloc[-1])
+                    live_prices[asset.symbol] = current_price
+                    
+                    # Calculate price change percentage
+                    if len(prices) > 1:
+                        previous_price = float(prices.iloc[-2])
+                        if previous_price > 0:
+                            price_change = ((current_price - previous_price) / previous_price) * 100
+                            price_changes[asset.symbol] = price_change
+                        else:
+                            price_changes[asset.symbol] = 0.0
+                    else:
+                        price_changes[asset.symbol] = 0.0
+                else:
+                    live_prices[asset.symbol] = 0.0
+                    price_changes[asset.symbol] = 0.0
+            except Exception as e:
+                print(f"Error getting live price for {asset.symbol}: {e}")
+                live_prices[asset.symbol] = 0.0
+                price_changes[asset.symbol] = 0.0
+        
+        result = {
+            'prices': live_prices,
+            'changes': price_changes,
+            'update_time': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        # Cache the result
+        if hasattr(data_service, '_data_cache'):
+            data_service._data_cache[cache_key] = (result, datetime.datetime.now())
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error getting live prices: {e}")
+        return {'prices': {}, 'changes': {}, 'update_time': None, 'error': str(e)}
+
+def calculate_correlation_matrix():
+    """Calculate correlation matrix - optimized for async loading"""
+    from services.data_service import data_service
+    import datetime
+    
+    portfolio = Portfolio.query.first()
+    if not portfolio:
+        return None
+    
+    assets = PortfolioAsset.query.filter_by(portfolio_id=portfolio.id).all()
+    symbols = [asset.symbol for asset in assets]
+    
+    if len(symbols) < 2:
+        return None
+    
+    cache_key = f"correlation_{'-'.join(sorted(symbols))}"
+    
+    # Check cache (1 hour expiry for correlation matrix)
+    if hasattr(data_service, '_data_cache') and cache_key in data_service._data_cache:
+        cached_data, cached_time = data_service._data_cache[cache_key]
+        if (datetime.datetime.now() - cached_time).seconds < 3600:  # 1 hour
+            return cached_data
+    
+    try:
+        # Fetch data for correlation calculation (use 1mo for faster loading)
+        portfolio_data = data_service.fetch_stock_data(symbols, period="1mo")
+        if not portfolio_data.empty and 'Close' in portfolio_data.columns:
+            # Calculate returns for correlation
+            if hasattr(portfolio_data['Close'], 'columns'):
+                returns_data = portfolio_data['Close'].pct_change().dropna()
+                correlation_matrix = returns_data.corr()
+                # Convert to HTML table
+                matrix_html = correlation_matrix.to_html(classes='table table-sm', float_format='%.2f')
+                
+                # Cache the result
+                if hasattr(data_service, '_data_cache'):
+                    data_service._data_cache[cache_key] = (matrix_html, datetime.datetime.now())
+                
+                return matrix_html
+            else:
+                return None
+        else:
+            return None
+    except Exception as e:
+        print(f"Error calculating correlation matrix: {e}")
+        return None
+
+def get_portfolio_data():
+    """Get current portfolio from database with accurate P&L calculation - OPTIMIZED"""
+    from sqlalchemy.orm import joinedload
+    
+    # Use eager loading to prevent N+1 queries
+    portfolio = Portfolio.query.options(joinedload(Portfolio.assets)).first()
     if not portfolio:
         return None, 0, 0, 0  # assets, total_value, total_cost, total_pnl
     
-    assets = PortfolioAsset.query.filter_by(portfolio_id=portfolio.id).all()
-    total_cost = sum(asset.allocation for asset in assets)  # Initial cost basis (what was paid)
+    assets = portfolio.assets  # Already loaded via joinedload
+    
+    # Calculate total cost properly based on purchase_price * quantity
+    total_cost = 0
+    for asset in assets:
+        if asset.purchase_price and asset.quantity:
+            # Correct: cost = purchase_price × quantity
+            total_cost += asset.purchase_price * asset.quantity
+        elif asset.allocation:
+            # Fallback: use allocation if no purchase data
+            total_cost += asset.allocation
     
     # Get current market values
     symbols = [asset.symbol for asset in assets]
@@ -221,57 +375,32 @@ def get_portfolio_data():
         # If we can't get live prices, assume no change
         return assets, total_cost, total_cost, 0
     
-    # Calculate current value based on actual purchase prices
+    # Calculate current value based on actual shares owned
     total_current_value = 0
     
     for asset in assets:
         if asset.symbol in live_prices and live_prices[asset.symbol] is not None:
             current_price = live_prices[asset.symbol]
             
-            if hasattr(asset, 'purchase_price') and hasattr(asset, 'quantity') and asset.purchase_price and asset.quantity:
-                # Use actual purchase price and quantity for precise P&L
+            if asset.purchase_price and asset.quantity:
+                # Correct calculation: current_price × quantity
                 current_value = current_price * asset.quantity
+                cost_basis = asset.purchase_price * asset.quantity
                 total_current_value += current_value
-                print(f"{asset.symbol}: {asset.quantity} shares @ ${current_price:.2f} = ${current_value:.2f} (bought @ ${asset.purchase_price:.2f})")
+                print(f"{asset.symbol}: {asset.quantity} shares @ ${current_price:.2f} = ${current_value:.2f} (cost: ${cost_basis:.2f})")
             else:
-                # Fallback: estimate based on allocation and price changes from recent data
-                try:
-                    # Get recent historical data to establish a baseline
-                    historical_data = data_service.fetch_stock_data([asset.symbol], period="5d", interval="daily")
-                    
-                    if not historical_data.empty:
-                        # Handle both single and multi-column DataFrame cases
-                        if 'Close' in historical_data.columns:
-                            if hasattr(historical_data['Close'], 'columns'):
-                                # Multi-column case (when fetching multiple tickers)
-                                if asset.symbol in historical_data['Close'].columns:
-                                    baseline_price = historical_data['Close'][asset.symbol].iloc[0]
-                                else:
-                                    baseline_price = current_price  # Use current price as baseline
-                            else:
-                                # Single column case
-                                baseline_price = historical_data['Close'].iloc[0]
-                        else:
-                            baseline_price = current_price  # Use current price as baseline
-                        
-                        # Calculate price change ratio and apply to allocation
-                        price_change_ratio = current_price / baseline_price
-                        current_value = asset.allocation * price_change_ratio
-                        total_current_value += current_value
-                        print(f"{asset.symbol}: Estimated value ${current_value:.2f} (baseline: ${baseline_price:.2f}, current: ${current_price:.2f})")
-                    else:
-                        # No historical data, use allocation
-                        total_current_value += asset.allocation
-                        print(f"{asset.symbol}: Using allocation ${asset.allocation:.2f} (no historical data)")
-                        
-                except Exception as e:
-                    print(f"Error calculating estimated value for {asset.symbol}: {e}")
-                    # Ultimate fallback: use allocation as current value
-                    total_current_value += asset.allocation
+                # Fallback: use allocation if no purchase/quantity data
+                total_current_value += asset.allocation if asset.allocation else 0
+                print(f"{asset.symbol}: Using allocation ${asset.allocation:.2f} (no purchase data)")
         else:
-            # No live price available, use allocation as current value
-            total_current_value += asset.allocation
-            print(f"{asset.symbol}: No live price available, using allocation ${asset.allocation:.2f}")
+            # No live price available, use cost basis
+            if asset.purchase_price and asset.quantity:
+                cost_basis = asset.purchase_price * asset.quantity
+                total_current_value += cost_basis
+                print(f"{asset.symbol}: No live price, using cost basis ${cost_basis:.2f}")
+            else:
+                total_current_value += asset.allocation if asset.allocation else 0
+                print(f"{asset.symbol}: No live price or purchase data, using allocation ${asset.allocation:.2f}")
     
     total_pnl = total_current_value - total_cost
     
@@ -365,9 +494,15 @@ def fetch_live_prices(symbols, force_refresh=False):
     
     return live_prices
 
-def calculate_portfolio_dashboard_data(force_refresh=False):
-    """Calculate comprehensive dashboard data for portfolio analysis"""
+def calculate_portfolio_dashboard_data(force_refresh=False, lightweight=False):
+    """Calculate comprehensive dashboard data for portfolio analysis
+    
+    Args:
+        force_refresh: Force refresh of cached data
+        lightweight: If True, use cached data when available and skip some calculations
+    """
     from services.risk_calculator import ProfessionalRiskEngine
+    import datetime
     
     try:
         # Get portfolio data
@@ -402,55 +537,24 @@ def calculate_portfolio_dashboard_data(force_refresh=False):
                     self.message = "No assets in portfolio"
             return EmptyDashboard()
         
-        # Get symbols and fetch stock data
-        symbols = [asset.symbol for asset in assets]
-        
-        # For portfolio-level analysis, we need to aggregate data
-        individual_data = {}
-        
-        for asset in assets:
-            try:
-                # Fetch individual stock data
-                stock_data = data_service.fetch_stock_data([asset.symbol])
-                
-                if not stock_data.empty:
-                    # Perform risk analysis for each asset
-                    risk_engine = ProfessionalRiskEngine(stock_data)
-                    metrics = risk_engine.analyze()
-                    
-                    # Store individual asset metrics
-                    individual_data[asset.symbol] = {
-                        'weight': asset.weight,
-                        'allocation': asset.allocation,
-                        'metrics': metrics
-                    }
-                    
-            except Exception as e:
-                print(f"Error analyzing {asset.symbol}: {e}")
-                individual_data[asset.symbol] = {
-                    'weight': asset.weight,
-                    'allocation': asset.allocation,
-                    'metrics': {"Error": f"Analysis failed: {e}"}
-                }
-        
         # Create dashboard data object with attributes for template access
         class DashboardData:
-            def __init__(self, total_value, total_cost, total_pnl, individual_data):
+            def __init__(self, total_value, total_cost, total_pnl, assets_list, lightweight=True, force_refresh=False):
                 self.total_value = total_value
                 self.total_cost = total_cost
                 self.total_pnl = total_pnl
                 self.pnl_percentage = (total_pnl / total_cost * 100) if total_cost > 0 else 0
-                self.total_assets = len(assets)
-                self.individual_data = individual_data
+                self.total_assets = len(assets_list)
+                self.lightweight = lightweight
                 
                 # Initialize all required attributes with defaults first
                 self.volatility = 0.0
                 self.sharpe_ratio = 0.0
                 self.var_95 = 0.0
                 self.var_99 = 0.0
-                self.es_95 = 0.0  # Expected Shortfall 95%
+                self.es_95 = 0.0
                 self.max_drawdown = 0.0
-                self.beta = 0.0
+                self.beta = 1.0
                 self.annual_return = 0.0
                 self.sortino_ratio = 0.0
                 self.calmar_ratio = 0.0
@@ -458,112 +562,141 @@ def calculate_portfolio_dashboard_data(force_refresh=False):
                 self.live_prices = {}
                 self.price_changes = {}
                 self.price_update_time = None
-                self.is_prices_cached = False
+                self.is_prices_cached = True
                 self.asset_class_breakdown = {}
                 self.correlation_matrix = None
                 self.skewness = 0.0
                 
-                # Calculate portfolio-level risk metrics
-                self._calculate_portfolio_metrics()
+                # Calculate basic metrics
+                self._calculate_asset_class_breakdown(assets_list)
                 
-                # Get live prices for assets
-                self.live_prices = self._get_live_prices()
+                # Always calculate metrics, but use cache if available in lightweight mode
+                if lightweight and not force_refresh:
+                    # Try to load from cache first
+                    if not self._load_cached_metrics():
+                        # No cache available, calculate anyway
+                        print("No cache available, calculating metrics...")
+                        self._calculate_portfolio_metrics(assets_list)
+                else:
+                    # Always calculate in non-lightweight mode or force refresh
+                    self._calculate_portfolio_metrics(assets_list)
+                
+                # Load live prices (needed for dashboard display)
+                self._load_live_prices(assets_list)
             
-            def _calculate_portfolio_metrics(self):
+            def _load_live_prices(self, assets_list):
+                """Load live prices for dashboard display"""
+                try:
+                    price_data = get_live_prices_for_portfolio()
+                    self.live_prices = price_data.get('prices', {})
+                    self.price_changes = price_data.get('changes', {})
+                    self.price_update_time = price_data.get('update_time')
+                except Exception as e:
+                    print(f"Error loading live prices: {e}")
+                    self.live_prices = {}
+                    self.price_changes = {}
+                    self.price_update_time = None
+            
+            def _load_cached_metrics(self):
+                """Load cached metrics from previous calculation"""
+                cache_key = "dashboard_metrics_cache"
+                if hasattr(data_service, '_data_cache') and cache_key in data_service._data_cache:
+                    cached_metrics, cached_time = data_service._data_cache[cache_key]
+                    # Use cache if less than 1 hour old
+                    if (datetime.datetime.now() - cached_time).seconds < 3600:
+                        for key, value in cached_metrics.items():
+                            setattr(self, key, value)
+                        self.is_prices_cached = True
+                        return True
+                return False
+            
+            def _calculate_portfolio_metrics(self, assets_list):
                 """Calculate portfolio-level risk metrics"""
                 try:
-                    # Get all portfolio symbols for combined analysis
-                    symbols = [asset.symbol for asset in assets]
+                    if not assets_list or len(assets_list) == 0:
+                        return
                     
-                    if symbols and len(symbols) > 0:
-                        # For now, let's use simple calculations for demonstration
-                        # In a real application, you'd want more sophisticated portfolio-level metrics
-                        
-                        # Calculate a simple average volatility from individual assets
-                        total_weight = sum(asset.weight for asset in assets if asset.weight)
-                        weighted_volatility = 0.0
-                        
-                        for asset in assets:
-                            try:
-                                # Get individual asset data
-                                asset_data = data_service.fetch_stock_data([asset.symbol], period="3mo")
-                                if not asset_data.empty and 'Close' in asset_data.columns:
-                                    # Calculate daily returns
-                                    if hasattr(asset_data['Close'], 'columns') and asset.symbol in asset_data['Close'].columns:
-                                        prices = asset_data['Close'][asset.symbol]
-                                    else:
-                                        prices = asset_data['Close']
+                    # Calculate weighted metrics from cached data when possible
+                    total_weight = sum(asset.weight for asset in assets_list if asset.weight)
+                    weighted_volatility = 0.0
+                    
+                    for asset in assets_list:
+                        try:
+                            # Use shorter period for faster loading (1mo instead of 3mo)
+                            asset_data = data_service.fetch_stock_data([asset.symbol], period="1mo")
+                            if not asset_data.empty and 'Close' in asset_data.columns:
+                                if hasattr(asset_data['Close'], 'columns') and asset.symbol in asset_data['Close'].columns:
+                                    prices = asset_data['Close'][asset.symbol]
+                                else:
+                                    prices = asset_data['Close']
+                                
+                                returns = prices.pct_change().dropna()
+                                if len(returns) > 1:
+                                    asset_volatility = returns.std() * (252 ** 0.5)
+                                    weight = asset.weight if asset.weight else (1.0 / len(assets_list))
+                                    weighted_volatility += asset_volatility * weight
                                     
-                                    returns = prices.pct_change().dropna()
-                                    if len(returns) > 1:
-                                        asset_volatility = returns.std() * (252 ** 0.5)  # Annualized
-                                        weight = asset.weight if asset.weight else (1.0 / len(assets))
-                                        weighted_volatility += asset_volatility * weight
+                                    # Calculate metrics only for first asset to save time
+                                    if self.volatility == 0.0:
+                                        self.volatility = asset_volatility
+                                        self.sharpe_ratio = returns.mean() / returns.std() * (252 ** 0.5) if returns.std() > 0 else 0.0
+                                        self.var_95 = returns.quantile(0.05)
+                                        self.var_99 = returns.quantile(0.01)
                                         
-                                        # For the first asset, calculate some basic metrics
-                                        if self.volatility == 0.0:  # First valid calculation
-                                            self.volatility = asset_volatility
-                                            self.sharpe_ratio = returns.mean() / returns.std() * (252 ** 0.5) if returns.std() > 0 else 0.0
-                                            self.var_95 = returns.quantile(0.05)  # 5% VaR
-                                            self.var_99 = returns.quantile(0.01)  # 1% VaR
-                                            
-                                            # Calculate Expected Shortfall (ES) 95%
-                                            var_95_threshold = returns.quantile(0.05)
-                                            es_returns = returns[returns <= var_95_threshold]
-                                            self.es_95 = es_returns.mean() if len(es_returns) > 0 else var_95_threshold
-                                            
-                                            # Calculate annual return
-                                            self.annual_return = returns.mean() * 252  # Annualized
-                                            
-                                            # Calculate max drawdown
-                                            cumulative_returns = (1 + returns).cumprod()
-                                            running_max = cumulative_returns.expanding().max()
-                                            drawdown = (cumulative_returns - running_max) / running_max
-                                            self.max_drawdown = drawdown.min()
-                                            
-                                            # Calculate Sortino ratio (downside deviation)
-                                            downside_returns = returns[returns < 0]
-                                            downside_std = downside_returns.std() if len(downside_returns) > 0 else returns.std()
-                                            self.sortino_ratio = returns.mean() / downside_std * (252 ** 0.5) if downside_std > 0 else 0.0
-                                            
-                                            # Calculate Calmar ratio (annual return / max drawdown)
-                                            self.calmar_ratio = abs(self.annual_return / self.max_drawdown) if self.max_drawdown != 0 else 0.0
-                                            
-                                            # Calculate skewness
-                                            self.skewness = returns.skew() if len(returns) > 2 else 0.0
-                                            
-                                            # For beta calculation, we'd need market data (SPY)
-                                            # For now, set a default value
-                                            self.beta = 1.0  # Default market beta
-                                            
-                                            self.daily_pnl = returns.iloc[-1] if len(returns) > 0 else 0.0
-                                            
-                            except Exception as e:
-                                print(f"Error calculating metrics for {asset.symbol}: {e}")
-                                continue
-                        
-                        # Update with weighted volatility if calculated
-                        if weighted_volatility > 0:
-                            self.volatility = weighted_volatility
+                                        var_95_threshold = returns.quantile(0.05)
+                                        es_returns = returns[returns <= var_95_threshold]
+                                        self.es_95 = es_returns.mean() if len(es_returns) > 0 else var_95_threshold
+                                        
+                                        self.annual_return = returns.mean() * 252
+                                        
+                                        cumulative_returns = (1 + returns).cumprod()
+                                        running_max = cumulative_returns.expanding().max()
+                                        drawdown = (cumulative_returns - running_max) / running_max
+                                        self.max_drawdown = drawdown.min()
+                                        
+                                        downside_returns = returns[returns < 0]
+                                        downside_std = downside_returns.std() if len(downside_returns) > 0 else returns.std()
+                                        self.sortino_ratio = returns.mean() / downside_std * (252 ** 0.5) if downside_std > 0 else 0.0
+                                        
+                                        self.calmar_ratio = abs(self.annual_return / self.max_drawdown) if self.max_drawdown != 0 else 0.0
+                                        self.skewness = returns.skew() if len(returns) > 2 else 0.0
+                                        self.daily_pnl = returns.iloc[-1] if len(returns) > 0 else 0.0
+                                        
+                        except Exception as e:
+                            print(f"Error calculating metrics for {asset.symbol}: {e}")
+                            continue
                     
-                    # Calculate asset class breakdown
-                    self._calculate_asset_class_breakdown()
+                    if weighted_volatility > 0:
+                        self.volatility = weighted_volatility
                     
-                    # Calculate correlation matrix
-                    self._calculate_correlation_matrix()
+                    # Cache the calculated metrics
+                    metrics_to_cache = {
+                        'volatility': self.volatility,
+                        'sharpe_ratio': self.sharpe_ratio,
+                        'var_95': self.var_95,
+                        'var_99': self.var_99,
+                        'es_95': self.es_95,
+                        'max_drawdown': self.max_drawdown,
+                        'beta': self.beta,
+                        'annual_return': self.annual_return,
+                        'sortino_ratio': self.sortino_ratio,
+                        'calmar_ratio': self.calmar_ratio,
+                        'skewness': self.skewness,
+                        'daily_pnl': self.daily_pnl
+                    }
+                    if hasattr(data_service, '_data_cache'):
+                        data_service._data_cache["dashboard_metrics_cache"] = (metrics_to_cache, datetime.datetime.now())
                     
                 except Exception as e:
                     print(f"Error in portfolio metrics calculation: {e}")
-                    # Keep default values that were already set
             
-            def _calculate_asset_class_breakdown(self):
+            def _calculate_asset_class_breakdown(self, assets_list):
                 """Calculate breakdown by asset class"""
                 try:
                     breakdown = {}
                     total_portfolio_allocation = 0.0
                     
-                    # First pass: calculate total allocation and count by asset class
-                    for asset in assets:
+                    for asset in assets_list:
                         asset_class = asset.asset_class if asset.asset_class else 'Other'
                         allocation = asset.allocation if asset.allocation else 0.0
                         total_portfolio_allocation += allocation
@@ -578,7 +711,6 @@ def calculate_portfolio_dashboard_data(force_refresh=False):
                         breakdown[asset_class]['total_allocation'] += allocation
                         breakdown[asset_class]['symbols'].append(asset.symbol)
                     
-                    # Second pass: convert to percentages if total > 0
                     if total_portfolio_allocation > 0:
                         for asset_class in breakdown:
                             breakdown[asset_class]['total_allocation'] = (
@@ -589,80 +721,8 @@ def calculate_portfolio_dashboard_data(force_refresh=False):
                 except Exception as e:
                     print(f"Error calculating asset class breakdown: {e}")
                     self.asset_class_breakdown = {}
-            
-            def _calculate_correlation_matrix(self):
-                """Calculate correlation matrix for portfolio assets"""
-                try:
-                    symbols = [asset.symbol for asset in assets]
-                    if len(symbols) > 1:
-                        # Fetch data for correlation calculation
-                        portfolio_data = data_service.fetch_stock_data(symbols, period="3mo")
-                        if not portfolio_data.empty and 'Close' in portfolio_data.columns:
-                            # Calculate returns for correlation
-                            if hasattr(portfolio_data['Close'], 'columns'):
-                                returns_data = portfolio_data['Close'].pct_change().dropna()
-                                correlation_matrix = returns_data.corr()
-                                # Convert to simple HTML table
-                                self.correlation_matrix = correlation_matrix.to_html(classes='table table-sm', float_format='%.2f')
-                            else:
-                                self.correlation_matrix = None
-                        else:
-                            self.correlation_matrix = None
-                    else:
-                        self.correlation_matrix = None
-                except Exception as e:
-                    print(f"Error calculating correlation matrix: {e}")
-                    self.correlation_matrix = None
-            
-            def _get_live_prices(self):
-                """Get current live prices for all portfolio assets"""
-                import datetime
-                live_prices = {}
-                price_changes = {}
-                
-                try:
-                    for asset in assets:
-                        try:
-                            # Fetch current price data
-                            current_data = data_service.fetch_stock_data([asset.symbol], period="1d", interval="1m")
-                            if not current_data.empty and 'Close' in current_data.columns:
-                                if hasattr(current_data['Close'], 'columns') and asset.symbol in current_data['Close'].columns:
-                                    prices = current_data['Close'][asset.symbol]
-                                else:
-                                    prices = current_data['Close']
-                                
-                                current_price = float(prices.iloc[-1])
-                                live_prices[asset.symbol] = current_price
-                                
-                                # Calculate price change percentage if we have enough data
-                                if len(prices) > 1:
-                                    previous_price = float(prices.iloc[-2])
-                                    if previous_price > 0:
-                                        price_change = ((current_price - previous_price) / previous_price) * 100
-                                        price_changes[asset.symbol] = price_change
-                                    else:
-                                        price_changes[asset.symbol] = 0.0
-                                else:
-                                    price_changes[asset.symbol] = 0.0
-                            else:
-                                live_prices[asset.symbol] = 0.0
-                                price_changes[asset.symbol] = 0.0
-                        except Exception as e:
-                            print(f"Error getting live price for {asset.symbol}: {e}")
-                            live_prices[asset.symbol] = 0.0
-                            price_changes[asset.symbol] = 0.0
-                    
-                    # Update instance attributes
-                    self.price_changes = price_changes
-                    self.price_update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    self.is_prices_cached = False  # Assume fresh data for now
-                    
-                except Exception as e:
-                    print(f"Error getting live prices: {e}")
-                
-                return live_prices
         
-        return DashboardData(total_current_value, total_cost, total_pnl, individual_data)
+        return DashboardData(total_current_value, total_cost, total_pnl, assets, lightweight=lightweight, force_refresh=force_refresh)
         
     except Exception as e:
         print(f"Error calculating dashboard data: {e}")
