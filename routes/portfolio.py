@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from datetime import datetime
-from models import db, Portfolio, PortfolioAsset
+from models import db, Portfolio, PortfolioAsset, Transaction
 from services.portfolio_service import portfolio_service, get_portfolio_data
 
 portfolio_bp = Blueprint('portfolio', __name__)
@@ -57,7 +57,6 @@ def add_asset():
     
     # Calculate allocation based on what's provided
     if purchase_price_val and quantity_val:
-        # Best case: we have both price and quantity
         allocation = purchase_price_val * quantity_val
         print(f"Calculated allocation: ${purchase_price_val} × {quantity_val} = ${allocation}")
     elif allocation_str and allocation_str.strip():
@@ -128,6 +127,62 @@ def remove_asset():
             flash(f'Error removing {symbol} from portfolio.', 'error')
     else:
         flash('Asset not found.', 'error')
+    
+    return redirect(url_for('portfolio.portfolio_manager'))
+
+@portfolio_bp.route('/sell_asset', methods=['POST'])
+def sell_asset():
+    """Sell shares of an asset"""
+    symbol = request.form.get('symbol', '').upper().strip()
+    quantity_str = request.form.get('quantity', '0')
+    price_str = request.form.get('sell_price', '0')
+    sell_date_str = request.form.get('sell_date', '')
+    
+    if not symbol:
+        flash('Symbol is required.', 'error')
+        return redirect(url_for('portfolio.portfolio_manager'))
+    
+    try:
+        quantity_to_sell = float(quantity_str)
+        sell_price = float(price_str)
+    except ValueError:
+        flash('Invalid quantity or price.', 'error')
+        return redirect(url_for('portfolio.portfolio_manager'))
+    
+    if quantity_to_sell <= 0:
+        flash('Quantity must be greater than 0.', 'error')
+        return redirect(url_for('portfolio.portfolio_manager'))
+    
+    if sell_price <= 0:
+        flash('Sell price must be greater than 0.', 'error')
+        return redirect(url_for('portfolio.portfolio_manager'))
+    
+    # Parse sell date if provided
+    sell_date = None
+    if sell_date_str and sell_date_str.strip():
+        try:
+            sell_date = datetime.strptime(sell_date_str, '%Y-%m-%d')
+        except ValueError:
+            pass
+    
+    # Get portfolio
+    portfolio = portfolio_service.get_or_create_default_portfolio()
+    
+    # Execute the sale
+    result = portfolio_service.sell_asset(
+        portfolio.id,
+        symbol,
+        quantity_to_sell,
+        sell_price,
+        sell_date
+    )
+    
+    if result['success']:
+        realized_pnl = result['realized_pnl']
+        pnl_text = f"${abs(realized_pnl):,.2f} {'gain' if realized_pnl >= 0 else 'loss'}"
+        flash(f"{result['message']} - Realized P&L: {pnl_text}", 'success')
+    else:
+        flash(result['message'], 'error')
     
     return redirect(url_for('portfolio.portfolio_manager'))
 
@@ -209,3 +264,23 @@ def rebalance_portfolio():
         flash('Error rebalancing portfolio.', 'error')
     
     return redirect(url_for('portfolio.portfolio_manager'))
+
+@portfolio_bp.route('/transactions')
+def transaction_history():
+    """View transaction history"""
+    portfolio = portfolio_service.get_or_create_default_portfolio()
+    
+    # Get all transactions
+    transactions = portfolio_service.get_transaction_history(portfolio.id, limit=100)
+    
+    # Get realized P&L summary
+    pnl_summary = portfolio_service.get_realized_pnl_summary(portfolio.id)
+    
+    # Get current portfolio data for unrealized P&L
+    portfolio_assets, total_value, total_cost, unrealized_pnl = get_portfolio_data()
+    
+    return render_template('transactions.html',
+                         transactions=transactions,
+                         pnl_summary=pnl_summary,
+                         unrealized_pnl=unrealized_pnl,
+                         total_realized_pnl=pnl_summary['total_realized_pnl'])

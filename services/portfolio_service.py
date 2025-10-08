@@ -1,4 +1,4 @@
-from models import db, Portfolio, PortfolioAsset
+from models import db, Portfolio, PortfolioAsset, Transaction
 from datetime import datetime
 from services.data_service import data_service
 
@@ -79,7 +79,6 @@ class PortfolioService:
             
         Note: If purchase_price and quantity are provided, allocation is calculated automatically
         """
-        # Calculate allocation from purchase_price × quantity if both provided
         if purchase_price is not None and quantity is not None:
             calculated_allocation = purchase_price * quantity
             if allocation is None or allocation == 0:
@@ -117,12 +116,29 @@ class PortfolioService:
                 allocation=allocation,
                 purchase_price=purchase_price,
                 quantity=quantity,
-                purchase_date=purchase_date
+                purchase_date=purchase_date,
+                realized_pnl=0.0
             )
             db.session.add(asset)
         
         try:
             db.session.commit()
+            
+            # Record the BUY transaction
+            if purchase_price and quantity:
+                transaction = Transaction(
+                    portfolio_id=portfolio_id,
+                    symbol=symbol,
+                    transaction_type='BUY',
+                    quantity=quantity,
+                    price=purchase_price,
+                    total_amount=purchase_price * quantity,
+                    transaction_date=purchase_date if purchase_date else datetime.now(),
+                    notes='Initial purchase'
+                )
+                db.session.add(transaction)
+                db.session.commit()
+            
             # Update all weights after adding/updating asset
             PortfolioService.update_portfolio_weights(portfolio_id)
             return True
@@ -132,12 +148,194 @@ class PortfolioService:
             return False
 
     @staticmethod
+    def sell_asset(portfolio_id, symbol, quantity_to_sell, sell_price, sell_date=None):
+        """Sell shares of an asset and track realized P&L
+        
+        Args:
+            portfolio_id: ID of the portfolio
+            symbol: Stock symbol
+            quantity_to_sell: Number of shares to sell
+            sell_price: Price per share for the sale
+            sell_date: Date of sale (optional, defaults to now)
+        
+        Returns:
+            dict with success status, realized P&L, and message
+        """
+        asset = PortfolioAsset.query.filter_by(
+            portfolio_id=portfolio_id,
+            symbol=symbol
+        ).first()
+        
+        if not asset:
+            return {
+                'success': False,
+                'message': f'Asset {symbol} not found in portfolio',
+                'realized_pnl': 0
+            }
+        
+        if not asset.quantity or asset.quantity <= 0:
+            return {
+                'success': False,
+                'message': f'No shares of {symbol} to sell',
+                'realized_pnl': 0
+            }
+        
+        if quantity_to_sell > asset.quantity:
+            return {
+                'success': False,
+                'message': f'Cannot sell {quantity_to_sell} shares. Only {asset.quantity} shares available.',
+                'realized_pnl': 0
+            }
+        
+        # Calculate realized P&L for this sale
+        # P&L = (sell_price - purchase_price) × quantity_to_sell
+        cost_basis = asset.purchase_price if asset.purchase_price else (asset.allocation / asset.quantity)
+        sale_proceeds = sell_price * quantity_to_sell
+        sale_cost = cost_basis * quantity_to_sell
+        realized_pnl = sale_proceeds - sale_cost
+        
+        # Update asset
+        remaining_quantity = asset.quantity - quantity_to_sell
+        
+        if remaining_quantity <= 0.0001:  # Essentially zero (floating point tolerance)
+            # Sold all shares - remove asset from portfolio
+            db.session.delete(asset)
+        else:
+            # Update quantity and allocation
+            asset.quantity = remaining_quantity
+            asset.allocation = cost_basis * remaining_quantity
+            asset.realized_pnl = (asset.realized_pnl or 0) + realized_pnl
+        
+        try:
+            # Record the SELL transaction
+            transaction = Transaction(
+                portfolio_id=portfolio_id,
+                symbol=symbol,
+                transaction_type='SELL',
+                quantity=quantity_to_sell,
+                price=sell_price,
+                total_amount=sale_proceeds,
+                transaction_date=sell_date if sell_date else datetime.now(),
+                notes=f'Sold {quantity_to_sell} shares',
+                realized_pnl=realized_pnl
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            
+            # Update weights
+            PortfolioService.update_portfolio_weights(portfolio_id)
+            
+            return {
+                'success': True,
+                'message': f'Successfully sold {quantity_to_sell} shares of {symbol}',
+                'realized_pnl': realized_pnl,
+                'remaining_quantity': remaining_quantity,
+                'sale_proceeds': sale_proceeds
+            }
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error selling asset: {e}")
+            return {
+                'success': False,
+                'message': f'Error processing sale: {str(e)}',
+                'realized_pnl': 0
+            }
+
+    @staticmethod
     def remove_asset_from_portfolio(portfolio_id, symbol):
         """Remove an asset from a portfolio"""
         asset = PortfolioAsset.query.filter_by(
             portfolio_id=portfolio_id, 
             symbol=symbol
         ).first()
+        
+        if asset:
+            db.session.delete(asset)
+            try:
+                db.session.commit()
+                # Update all weights after removing asset
+                PortfolioService.update_portfolio_weights(portfolio_id)
+                return True
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error removing asset from portfolio: {e}")
+                return False
+        return False
+
+    @staticmethod
+    def get_transaction_history(portfolio_id, symbol=None, limit=None):
+        """Get transaction history for portfolio or specific symbol
+        
+        Args:
+            portfolio_id: ID of the portfolio
+            symbol: Optional symbol to filter by
+            limit: Optional limit on number of transactions
+        
+        Returns:
+            List of Transaction objects
+        """
+        query = Transaction.query.filter_by(portfolio_id=portfolio_id)
+        
+        if symbol:
+            query = query.filter_by(symbol=symbol)
+        
+        query = query.order_by(Transaction.transaction_date.desc())
+        
+        if limit:
+            query = query.limit(limit)
+        
+        return query.all()
+
+    @staticmethod
+    def get_realized_pnl_summary(portfolio_id):
+        """Get summary of realized P&L by symbol
+        
+        Returns:
+            dict with total realized P&L and breakdown by symbol
+        """
+        transactions = Transaction.query.filter_by(
+            portfolio_id=portfolio_id,
+            transaction_type='SELL'
+        ).all()
+        
+        total_realized_pnl = 0
+        by_symbol = {}
+        
+        for txn in transactions:
+            if txn.realized_pnl:
+                total_realized_pnl += txn.realized_pnl
+                
+                if txn.symbol not in by_symbol:
+                    by_symbol[txn.symbol] = {
+                        'realized_pnl': 0,
+                        'total_sold': 0,
+                        'sale_proceeds': 0,
+                        'transactions': 0
+                    }
+                
+                by_symbol[txn.symbol]['realized_pnl'] += txn.realized_pnl
+                by_symbol[txn.symbol]['total_sold'] += txn.quantity
+                by_symbol[txn.symbol]['sale_proceeds'] += txn.total_amount
+                by_symbol[txn.symbol]['transactions'] += 1
+        
+        return {
+            'total_realized_pnl': total_realized_pnl,
+            'by_symbol': by_symbol
+        }
+
+    @staticmethod
+    def get_unrealized_pnl(portfolio_id):
+        """Calculate unrealized P&L for current holdings"""
+        from services.portfolio_service import get_portfolio_data
+        
+        portfolio, total_value, total_cost, total_pnl = get_portfolio_data()
+        
+        if not portfolio:
+            return 0
+        
+        # Unrealized P&L is the current total P&L
+        # (doesn't include realized P&L which was already locked in)
+        return total_pnl
         
         if asset:
             db.session.delete(asset)
@@ -249,7 +447,6 @@ def get_live_prices_for_portfolio():
         # Fetch all prices in batch if possible
         for asset in assets:
             try:
-                # Use daily data instead of 1-minute for faster loading
                 current_data = data_service.fetch_stock_data([asset.symbol], period="5d")
                 if not current_data.empty and 'Close' in current_data.columns:
                     if hasattr(current_data['Close'], 'columns') and asset.symbol in current_data['Close'].columns:

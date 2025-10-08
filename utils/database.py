@@ -55,6 +55,15 @@ def init_database():
                     print("Added purchase_date column to portfolio_asset table")
                 except Exception as e:
                     print(f"Note: Could not add purchase_date column: {e}")
+            
+            if 'realized_pnl' not in columns:
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text('ALTER TABLE portfolio_asset ADD COLUMN realized_pnl FLOAT DEFAULT 0.0'))
+                        conn.commit()
+                    print("Added realized_pnl column to portfolio_asset table")
+                except Exception as e:
+                    print(f"Note: Could not add realized_pnl column: {e}")
         
         print("Database initialization completed successfully.")
         return True
@@ -86,7 +95,8 @@ def check_database_health():
             'stock_analysis_cache',
             'risk_metrics',
             'portfolio_metrics',
-            'snapshot'
+            'snapshot',
+            'transaction'
         ]
         
         missing_tables = [table for table in required_tables if table not in tables]

@@ -4,7 +4,15 @@
 
 {% block content %}
 <div class="container mx-auto p-4">
-    <h2 class="text-2xl font-bold mb-4">Portfolio Manager</h2>
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold">Portfolio Manager</h2>
+        <a href="{{ url_for('portfolio.transaction_history') }}" class="btn btn-outline btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Transaction History
+        </a>
+    </div>
     
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -29,10 +37,11 @@
                         <tr>
                             <th>Symbol</th>
                             <th>Asset Class</th>
-                            <th>Weight (%)</th>
-                            <th>Allocation ($)</th>
-                            <th>Purchase Info</th>
-                            <th>Action</th>
+                            <th>Shares</th>
+                            <th>Avg Price</th>
+                            <th>Current Value</th>
+                            <th>Realized P&L</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -42,39 +51,58 @@
                             <td>
                                 <span class="badge badge-outline">{{ asset.asset_class }}</span>
                             </td>
-                            <td>{{ "%.2f"|format(asset.weight * 100) }}%</td>
-                            <td>${{ "%.0f"|format(asset.allocation) }}</td>
                             <td>
-                                {% if asset.purchase_price and asset.quantity %}
-                                    <div class="text-xs">
-                                        <div>${{ "%.2f"|format(asset.purchase_price) }} × {{ "%.2f"|format(asset.quantity) }}</div>
-                                        {% if asset.purchase_date %}
-                                            <div class="opacity-60">{{ asset.purchase_date.strftime('%m/%d/%Y') }}</div>
-                                        {% endif %}
-                                    </div>
+                                {% if asset.quantity %}
+                                    {{ "%.3f"|format(asset.quantity) }}
                                 {% else %}
-                                    <span class="text-xs opacity-60">Estimated</span>
+                                    <span class="text-xs opacity-60">N/A</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <form method="POST" action="{{ url_for('portfolio.remove_asset') }}" style="display:inline;">
-                                    <input type="hidden" name="symbol" value="{{ asset.symbol }}">
-                                    <button type="submit" class="btn btn-xs btn-error">Remove</button>
-                                </form>
+                                {% if asset.purchase_price %}
+                                    ${{ "%.2f"|format(asset.purchase_price) }}
+                                    {% if asset.purchase_date %}
+                                        <div class="text-xs opacity-60">{{ asset.purchase_date.strftime('%m/%d/%Y') }}</div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-xs opacity-60">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>${{ "%.0f"|format(asset.allocation) }}</td>
+                            <td>
+                                {% if asset.realized_pnl and asset.realized_pnl != 0 %}
+                                    <span class="{{ 'text-success' if asset.realized_pnl > 0 else 'text-error' }}">
+                                        {{ "+" if asset.realized_pnl > 0 else "" }}${{ "%.2f"|format(asset.realized_pnl) }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-xs opacity-60">$0.00</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="flex gap-1">
+                                    {% if asset.quantity and asset.quantity > 0 %}
+                                    <button onclick="openSellModal('{{ asset.symbol }}', {{ asset.quantity }}, {{ asset.purchase_price if asset.purchase_price else 0 }})" class="btn btn-xs btn-warning">Sell</button>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('portfolio.remove_asset') }}" style="display:inline;">
+                                        <input type="hidden" name="symbol" value="{{ asset.symbol }}">
+                                        <button type="submit" class="btn btn-xs btn-error" onclick="return confirm('Are you sure you want to remove {{ asset.symbol }}? This will delete all transaction history.')">Remove</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            
             <div class="flex justify-between mt-4">
                 <div class="stat">
-                    <div class="stat-title">Portfolio P&L</div>
+                    <div class="stat-title">Unrealized P&L</div>
                     <div class="stat-value {{ 'text-success' if total_pnl > 0 else 'text-error' if total_pnl < 0 else '' }}">
                         {{ "+" if total_pnl > 0 else "" }}${{ "%.0f"|format(total_pnl) }}
                     </div>
                     <div class="stat-desc">
-                        {{ "+" if total_pnl > 0 else "" }}{{ "%.2f"|format((total_pnl/total_cost*100) if total_cost != 0 else 0) }}%
+                        {{ "+" if total_pnl > 0 else "" }}{{ "%.2f"|format((total_pnl/total_cost*100) if total_cost != 0 else 0) }}% (current holdings)
                     </div>
                 </div>
                 <div class="stat">
@@ -111,7 +139,8 @@
                         <label class="label">
                             <span class="label-text">Symbol</span>
                         </label>
-                        <input type="text" name="symbol" placeholder="e.g., AAPL" class="input input-bordered" required />
+                        <input type="text" name="symbol" id="symbol_input" placeholder="e.g., AAPL" class="input input-bordered" required />
+                    </div>
                     </div>
                     
                     <div class="form-control">
@@ -154,7 +183,18 @@
                             <span class="label-text font-bold">Purchase Price ($)</span>
                             <span class="label-text-alt">Price per share when bought</span>
                         </label>
-                        <input type="number" name="purchase_price" step="0.01" min="0" placeholder="150.00" class="input input-bordered" id="purchase_price" />
+                        <div class="join w-full">
+                            <input type="number" name="purchase_price" step="0.01" min="0" placeholder="150.00" class="input input-bordered join-item flex-1" id="purchase_price" />
+                            <button type="button" class="btn btn-primary join-item" onclick="fetchCurrentPriceForBuy()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                        <label class="label">
+                            <span class="label-text-alt text-info" id="price_status">Click refresh to get today's price</span>
+                        </label>
+                    </div>
                     </div>
                     
                     <div class="form-control">
@@ -234,4 +274,137 @@
         </div>
     </div>
 </div>
+
+<!-- Sell Asset Modal -->
+<dialog id="sell_modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">Sell Asset</h3>
+        <form method="POST" action="{{ url_for('portfolio.sell_asset') }}" id="sell_form">
+            <div class="py-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Symbol</span>
+                    </label>
+                    <input type="text" id="sell_symbol" name="symbol" class="input input-bordered" readonly />
+                </div>
+                
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">Quantity to Sell</span>
+                        <span class="label-text-alt" id="max_quantity_label">Max: 0</span>
+                    </label>
+                    <input type="number" id="sell_quantity" name="quantity" step="0.001" min="0.001" class="input input-bordered" required />
+                </div>
+                
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">Sell Price (per share)</span>
+                        <span class="label-text-alt" id="purchase_price_label">Bought at: $0</span>
+                    </label>
+                    <input type="number" id="sell_price" name="sell_price" step="0.01" min="0.01" class="input input-bordered" required />
+                </div>
+                
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">Sell Date (Optional)</span>
+                    </label>
+                    <input type="date" name="sell_date" class="input input-bordered" />
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div>
+                        <h4 class="font-bold">Realized P&L Calculation</h4>
+                        <div class="text-sm">
+                            P&L = (Sell Price - Purchase Price) × Quantity<br>
+                            The realized P&L will be tracked separately from unrealized P&L.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button type="submit" class="btn btn-warning">Sell Shares</button>
+                <button type="button" class="btn" onclick="document.getElementById('sell_modal').close()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+function fetchCurrentPriceForBuy() {
+    const symbolInput = document.getElementById('symbol_input');
+    const priceInput = document.getElementById('purchase_price');
+    const statusLabel = document.getElementById('price_status');
+    
+    if (!symbolInput) {
+        console.error('Symbol input field not found');
+        return;
+    }
+    
+    const symbol = symbolInput.value.trim().toUpperCase();
+    
+    if (!symbol) {
+        statusLabel.textContent = 'Please enter a symbol first';
+        statusLabel.className = 'label-text-alt text-error';
+        symbolInput.focus();
+        return;
+    }
+    
+    // Show loading state
+    statusLabel.textContent = 'Fetching current price for ' + symbol + '...';
+    statusLabel.className = 'label-text-alt text-warning';
+    priceInput.placeholder = 'Loading...';
+    
+    fetch('/api/stock/current-price/' + symbol)
+        .then(response => response.json())
+        .then(data => {
+            if (data.price) {
+                priceInput.value = data.price;
+                statusLabel.textContent = symbol + ' current price: $' + data.price + ' (today)';
+                statusLabel.className = 'label-text-alt text-success';
+            } else {
+                statusLabel.textContent = 'Error: ' + (data.error || 'Could not fetch price for ' + symbol);
+                statusLabel.className = 'label-text-alt text-error';
+                priceInput.placeholder = 'Enter price manually';
+            }
+        })
+        .catch(error => {
+            statusLabel.textContent = 'Error fetching price for ' + symbol + '. Please enter manually.';
+            statusLabel.className = 'label-text-alt text-error';
+            priceInput.placeholder = 'Enter price';
+            console.error('Error:', error);
+        });
+}
+
+function openSellModal(symbol, maxQuantity, purchasePrice) {
+    document.getElementById('sell_symbol').value = symbol;
+    document.getElementById('sell_quantity').max = maxQuantity;
+    document.getElementById('max_quantity_label').textContent = 'Max: ' + maxQuantity.toFixed(3);
+    document.getElementById('purchase_price_label').textContent = 'Bought at: $' + purchasePrice.toFixed(2);
+    
+    // Fetch current market price
+    const sellPriceInput = document.getElementById('sell_price');
+    sellPriceInput.value = ''; // Clear previous value
+    sellPriceInput.placeholder = 'Fetching current price...';
+    
+    fetch('/api/stock/current-price/' + symbol)
+        .then(response => response.json())
+        .then(data => {
+            if (data.price) {
+                sellPriceInput.value = data.price;
+                sellPriceInput.placeholder = 'Current price: $' + data.price;
+            } else {
+                sellPriceInput.placeholder = 'Enter sell price';
+                console.error('Error fetching price:', data.error);
+            }
+        })
+        .catch(error => {
+            sellPriceInput.placeholder = 'Enter sell price';
+            console.error('Error fetching price:', error);
+        });
+    
+    document.getElementById('sell_modal').showModal();
+}
+</script>
+
 {% endblock %}

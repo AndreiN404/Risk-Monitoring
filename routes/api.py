@@ -54,3 +54,40 @@ def get_correlation_matrix():
         return jsonify({'matrix_html': matrix_html})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/stock/current-price/<symbol>')
+def get_current_price(symbol):
+    """Get current market price for a stock symbol"""
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker(symbol.upper())
+        
+        # Get current market data
+        info = ticker.info
+        
+        # Try different price fields in order of preference
+        current_price = None
+        price_fields = ['currentPrice', 'regularMarketPrice', 'previousClose', 'ask', 'bid']
+        
+        for field in price_fields:
+            if field in info and info[field]:
+                current_price = float(info[field])
+                break
+        
+        if current_price is None:
+            # Fallback: try to get latest close from history
+            hist = ticker.history(period='1d')
+            if not hist.empty:
+                current_price = float(hist['Close'].iloc[-1])
+        
+        if current_price is None:
+            return jsonify({'error': f'Could not fetch price for {symbol}'}), 404
+        
+        return jsonify({
+            'symbol': symbol.upper(),
+            'price': round(current_price, 2),
+            'timestamp': info.get('regularMarketTime', 'N/A')
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
