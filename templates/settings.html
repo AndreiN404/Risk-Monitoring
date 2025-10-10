@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Settings - Risk Engine{% endblock %}
+{% block title %}Settings - Risk Analysis{% endblock %}
 
 {% block content %}
 <div class="container mx-auto p-4">
@@ -36,7 +36,7 @@
                                     </svg>
                                     Light Theme
                                 </span>
-                                <input type="radio" name="theme" value="light" class="radio radio-primary" {% if session.get('theme', 'light') == 'light' %}checked{% endif %} />
+                                <input type="radio" name="theme" value="light" class="radio radio-primary" {% if settings.theme == 'light' %}checked{% endif %} />
                             </label>
                             <label class="label cursor-pointer">
                                 <span class="label-text">
@@ -45,7 +45,7 @@
                                     </svg>
                                     Dark Theme
                                 </span>
-                                <input type="radio" name="theme" value="dark" class="radio radio-primary" {% if session.get('theme', 'light') == 'dark' %}checked{% endif %} />
+                                <input type="radio" name="theme" value="dark" class="radio radio-primary" {% if settings.theme == 'dark' %}checked{% endif %} />
                             </label>
                             <label class="label cursor-pointer">
                                 <span class="label-text">
@@ -54,7 +54,7 @@
                                     </svg>
                                     System Default
                                 </span>
-                                <input type="radio" name="theme" value="system" class="radio radio-primary" {% if session.get('theme', 'light') == 'system' %}checked{% endif %} />
+                                <input type="radio" name="theme" value="system" class="radio radio-primary" {% if settings.theme == 'system' %}checked{% endif %} />
                             </label>
                         </div>
                     </div>
@@ -70,8 +70,71 @@
                             <span class="label-text">Risk-Free Rate</span>
                             <span class="label-text-alt">Used for Sharpe ratio calculations</span>
                         </label>
-                        <input type="number" step="0.001" min="0" max="1" name="risk_free_rate" placeholder="e.g., 0.02" class="input input-bordered" value="{{ session.get('risk_free_rate', '0.02') }}" />
+                        <input type="number" step="0.001" min="0" max="1" name="risk_free_rate" placeholder="e.g., 0.03" class="input input-bordered" value="{{ settings.risk_free_rate }}" />
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Indices Selection -->
+        <div class="card bg-base-100 shadow-xl mt-6">
+            <div class="card-body">
+                <h3 class="card-title">Dashboard Market Indices</h3>
+                <p class="text-sm opacity-70 mb-4">Select up to 4 indices to display on the main dashboard</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- US Indices -->
+                    <div>
+                        <h4 class="font-semibold mb-3 text-blue-600">🇺🇸 United States</h4>
+                        <div class="flex flex-col gap-2">
+                            {% for index in available_indices %}
+                                {% if index.region == 'US' %}
+                                <label class="label cursor-pointer justify-start gap-3">
+                                    <input type="checkbox" name="selected_indices" value="{{ index.symbol }}" class="checkbox checkbox-primary index-checkbox" 
+                                           {% if index.symbol in settings.selected_indices %}checked{% endif %} />
+                                    <span class="label-text">{{ index.name }}</span>
+                                </label>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- European Indices -->
+                    <div>
+                        <h4 class="font-semibold mb-3 text-green-600">🇪🇺 Europe</h4>
+                        <div class="flex flex-col gap-2">
+                            {% for index in available_indices %}
+                                {% if index.region == 'Europe' %}
+                                <label class="label cursor-pointer justify-start gap-3">
+                                    <input type="checkbox" name="selected_indices" value="{{ index.symbol }}" class="checkbox checkbox-primary index-checkbox" 
+                                           {% if index.symbol in settings.selected_indices %}checked{% endif %} />
+                                    <span class="label-text">{{ index.name }}</span>
+                                </label>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Asian Indices -->
+                    <div>
+                        <h4 class="font-semibold mb-3 text-red-600">🌏 Asia</h4>
+                        <div class="flex flex-col gap-2">
+                            {% for index in available_indices %}
+                                {% if index.region == 'Asia' %}
+                                <label class="label cursor-pointer justify-start gap-3">
+                                    <input type="checkbox" name="selected_indices" value="{{ index.symbol }}" class="checkbox checkbox-primary index-checkbox" 
+                                           {% if index.symbol in settings.selected_indices %}checked{% endif %} />
+                                    <span class="label-text">{{ index.name }}</span>
+                                </label>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span id="selection-count">You can select up to 4 indices. Currently selected: {{ settings.selected_indices|length }}</span>
                 </div>
             </div>
         </div>
@@ -92,4 +155,35 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Enforce 4-index maximum selection
+    const checkboxes = document.querySelectorAll('.index-checkbox');
+    const selectionCount = document.getElementById('selection-count');
+    
+    function updateSelectionCount() {
+        const checked = document.querySelectorAll('.index-checkbox:checked').length;
+        selectionCount.textContent = `You can select up to 4 indices. Currently selected: ${checked}`;
+        
+        // Disable unchecked boxes if limit reached
+        if (checked >= 4) {
+            checkboxes.forEach(cb => {
+                if (!cb.checked) {
+                    cb.disabled = true;
+                }
+            });
+        } else {
+            checkboxes.forEach(cb => {
+                cb.disabled = false;
+            });
+        }
+    }
+    
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateSelectionCount);
+    });
+    
+    // Initialize on load
+    updateSelectionCount();
+</script>
 {% endblock %}

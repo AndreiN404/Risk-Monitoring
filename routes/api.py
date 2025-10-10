@@ -91,3 +91,32 @@ def get_current_price(symbol):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/charts/indices')
+def get_indices_charts():
+    """Get hourly candle data for major market indices"""
+    try:
+        from flask import session
+        from services.chart_service import get_hourly_candles, get_index_info, get_default_indices
+        
+        # Get selected indices from session, or use defaults
+        indices = session.get('selected_indices', get_default_indices())
+        
+        # Fetch hourly candle data
+        candle_data = get_hourly_candles(indices, period='5d')
+        
+        # Get index display info
+        index_info = get_index_info()
+        
+        # Combine data with display info
+        result = {}
+        for symbol in indices:
+            result[symbol] = {
+                'candles': candle_data.get(symbol, []),
+                'info': index_info.get(symbol, {})
+            }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -539,15 +539,14 @@ def calculate_correlation_matrix():
         return None
 
 def get_portfolio_data():
-    """Get current portfolio from database with accurate P&L calculation - OPTIMIZED"""
+    """Get current portfolio from database with accurate P&L calculation"""
     from sqlalchemy.orm import joinedload
     
-    # Use eager loading to prevent N+1 queries
     portfolio = Portfolio.query.options(joinedload(Portfolio.assets)).first()
     if not portfolio:
         return None, 0, 0, 0  # assets, total_value, total_cost, total_pnl
     
-    assets = portfolio.assets  # Already loaded via joinedload
+    assets = portfolio.assets  
     
     # Calculate total cost properly based on purchase_price * quantity
     total_cost = 0
