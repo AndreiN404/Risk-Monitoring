@@ -120,3 +120,14 @@ def get_indices_charts():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/news/articles')
+def fetch_finviz_news():
+    """Fetch latest news articles from Finviz and save to database"""
+    try:
+        from services.news_service import fetch_finviz_news as fetch_news
+        articles = fetch_news()
+        return jsonify({'articles_fetched': len(articles)})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

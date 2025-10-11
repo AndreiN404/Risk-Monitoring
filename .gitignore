@@ -236,3 +236,6 @@ debug/
 *_with_api_keys.ipynb
 *_private.ipynb
 /node_modules
+*.md
+*.ps1
+*.sh

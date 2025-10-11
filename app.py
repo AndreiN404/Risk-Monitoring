@@ -17,12 +17,13 @@ def create_app(config_name='default'):
     db.init_app(app)
     
     # Register blueprints
-    from routes import main_bp, portfolio_bp, analysis_bp, settings_bp
+    from routes import main_bp, portfolio_bp, analysis_bp, settings_bp, news_bp
     from routes.api import api_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(portfolio_bp)
     app.register_blueprint(analysis_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(news_bp)
     app.register_blueprint(api_bp)
     
     # Initialize database within app context
@@ -30,6 +31,10 @@ def create_app(config_name='default'):
         from utils.database import init_database
         if not init_database():
             print("Warning: Database initialization failed")
+    
+    # Initialize background scheduler for periodic tasks
+    from services.scheduler import init_scheduler
+    init_scheduler(app)
     
     return app
 
