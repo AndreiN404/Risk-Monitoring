@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 import feedparser
+from difflib import SequenceMatcher
 from models.database import db
 from models.news import NewsArticle
 
@@ -16,6 +17,59 @@ NEWS_SOURCES = {
     'Benzinga': 'https://www.benzinga.com/feed',
     'Investing.com': 'https://www.investing.com/rss/news.rss',
 }
+
+
+def _is_similar_title(title1, title2, threshold=0.85):
+    """
+    Check if two titles are similar using sequence matching.
+    
+    Args:
+        title1: First title
+        title2: Second title
+        threshold: Similarity threshold (0-1), default 0.85
+        
+    Returns:
+        bool: True if titles are similar
+    """
+    # Normalize titles for comparison
+    t1 = title1.lower().strip()
+    t2 = title2.lower().strip()
+    
+    # Calculate similarity ratio
+    ratio = SequenceMatcher(None, t1, t2).ratio()
+    
+    return ratio >= threshold
+
+
+def _remove_duplicate_articles(articles):
+    """
+    Remove duplicate articles based on title similarity.
+    
+    Args:
+        articles: List of article dictionaries
+        
+    Returns:
+        List of unique articles
+    """
+    unique_articles = []
+    seen_titles = []
+    
+    for article in articles:
+        title = article['title']
+        is_duplicate = False
+        
+        # Check against all previously seen titles
+        for seen_title in seen_titles:
+            if _is_similar_title(title, seen_title):
+                is_duplicate = True
+                logging.debug(f"Duplicate detected: '{title}' similar to '{seen_title}'")
+                break
+        
+        if not is_duplicate:
+            unique_articles.append(article)
+            seen_titles.append(title)
+    
+    return unique_articles
 
 
 def _parse_entry_timestamp(entry, source_name):
@@ -109,7 +163,7 @@ def fetch_news_from_sources():
     Fetch latest news articles from multiple RSS feeds.
     
     Returns:
-        List of news articles sorted by timestamp (newest first)
+        List of news articles sorted by timestamp (newest first), with duplicates removed
     """
     all_articles = []
     
@@ -133,10 +187,15 @@ def fetch_news_from_sources():
             logging.error(f"Error fetching from {source_name}: {e}")
             continue
     
+    # Remove duplicate articles based on title similarity
+    logging.info(f"Total articles before deduplication: {len(all_articles)}")
+    all_articles = _remove_duplicate_articles(all_articles)
+    logging.info(f"Total articles after deduplication: {len(all_articles)}")
+    
     # Sort articles by timestamp (newest first)
     all_articles.sort(key=lambda x: datetime.fromisoformat(x['timestamp']), reverse=True)
     
-    logging.info(f"Total articles fetched: {len(all_articles)}")
+    logging.info(f"Final unique articles: {len(all_articles)}")
     return all_articles
 
 

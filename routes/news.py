@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from services.news_service import fetch_news_from_sources, save_articles_to_db
+from services.sentiment_service import get_sentiment_summary
 from models.news import NewsArticle
 from models.database import db
 
@@ -36,8 +37,23 @@ def news():
     # Display recent news articles from the database
     try:
         recent_articles = NewsArticle.query.order_by(NewsArticle.timestamp.desc()).limit(50).all()
+        
+        # Get sentiment summary for last 7 days
+        sentiment_summary = get_sentiment_summary(days=7)
     except Exception as e:
         recent_articles = []
+        sentiment_summary = None
         flash(f'Error loading news from database: {str(e)}', 'warning')
     
-    return render_template('news.html', articles=recent_articles)
+    return render_template('news.html', articles=recent_articles, sentiment=sentiment_summary)
+
+
+@news_bp.route('/api/news/sentiment', methods=['GET'])
+def get_sentiment():
+    """API endpoint to get sentiment analysis"""
+    try:
+        days = request.args.get('days', 7, type=int)
+        sentiment_summary = get_sentiment_summary(days=days)
+        return jsonify(sentiment_summary)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

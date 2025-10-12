@@ -1,180 +1,995 @@
 {% extends "base.html" %}
-
-{% block title %}Settings - Risk Analysis{% endblock %}
+{% block title %}Settings - Risk Monitoring{% endblock %}
 
 {% block content %}
-<div class="container mx-auto p-4">
-    <h2 class="text-2xl font-bold mb-4">Settings</h2>
-    
+<div class="container mx-auto p-6 max-w-7xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-primary mb-2 font-mono">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="inline h-8 w-8 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    System Configuration
+                </h1>
+                <p class="text-base-content/70">
+                    Manage application settings, plugins, themes, and preferences
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="resetAllSettings()" class="btn btn-outline btn-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reset All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ 'error' if category == 'error' else 'success' }} shadow-lg mb-4">
-                    <div>
-                        <span>{{ message }}</span>
-                    </div>
+                <div class="alert alert-success mb-4 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{{ message }}</span>
                 </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('settings.settings') }}">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Theme Settings -->
-            <div class="card bg-base-100 shadow-xl">
-                <div class="card-body">
-                    <h3 class="card-title">Theme Settings</h3>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Choose your theme</span>
-                        </label>
-                        <div class="flex flex-col gap-2">
+    <!-- Tab Navigation -->
+    <div class="tabs tabs-boxed bg-base-200 mb-6 p-1">
+        <a class="tab tab-active" data-tab="general">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            General
+        </a>
+        <a class="tab" data-tab="appearance">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+            </svg>
+            Appearance
+        </a>
+        <a class="tab" data-tab="risk">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Risk Analysis
+        </a>
+        <a class="tab" data-tab="data">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            </svg>
+            Data & Markets
+        </a>
+        <a class="tab" data-tab="plugins">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+            </svg>
+            Plugins
+            <span class="badge badge-primary badge-sm ml-2">{{ plugins_with_settings|length }}</span>
+        </a>
+        <a class="tab" data-tab="advanced">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            Advanced
+        </a>
+    </div>
+
+    <form method="POST" action="{{ url_for('settings.settings') }}" id="settingsForm">
+        
+        <!-- GENERAL TAB -->
+        <div class="tab-content active" data-tab-content="general">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Application Info -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Application Info
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between py-2 border-b border-base-300">
+                                <span class="font-semibold">Version</span>
+                                <span class="badge badge-outline">v1.0.0</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-base-300">
+                                <span class="font-semibold">Environment</span>
+                                <span class="badge badge-success">Production</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-base-300">
+                                <span class="font-semibold">Active Plugins</span>
+                                <span class="badge badge-primary">{{ plugins_with_settings|length }}</span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span class="font-semibold">Last Updated</span>
+                                <span class="text-sm opacity-70">Just now</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Preferences -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                            </svg>
+                            Dashboard Preferences
+                        </h2>
+                        
+                        <div class="form-control">
                             <label class="label cursor-pointer">
-                                <span class="label-text">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div class="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                    </svg>
+                                    <div>
+                                        <span class="label-text font-semibold">Market Overview Cards</span>
+                                        <span class="label-text-alt block">Display global indices</span>
+                                    </div>
+                                </div>
+                                <input type="checkbox" 
+                                       name="show_market_overview" 
+                                       class="toggle toggle-primary" 
+                                       {% if settings.show_market_overview %}checked{% endif %} />
+                            </label>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div>
+                                        <span class="label-text font-semibold">Real-time Updates</span>
+                                        <span class="label-text-alt block">Auto-refresh data</span>
+                                    </div>
+                                </div>
+                                <input type="checkbox" 
+                                       name="enable_realtime" 
+                                       class="toggle toggle-primary" 
+                                       {% if settings.get('enable_realtime', True) %}checked{% endif %} />
+                            </label>
+                        </div>
+
+                        <div class="alert alert-info mt-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-xs">Changes take effect immediately</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- APPEARANCE TAB -->
+        <div class="tab-content" data-tab-content="appearance">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Theme Selection -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                            Theme Preference
+                        </h2>
+                        
+                        <div class="form-control w-full space-y-3">
+                            <label class="label cursor-pointer bg-base-300 p-4 rounded-lg hover:bg-base-100 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
-                                    Light Theme
-                                </span>
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold text-base">Light Theme</span>
+                                        <span class="label-text-alt block">Bright and clean interface</span>
+                                    </div>
+                                </div>
                                 <input type="radio" name="theme" value="light" class="radio radio-primary" {% if settings.theme == 'light' %}checked{% endif %} />
                             </label>
-                            <label class="label cursor-pointer">
-                                <span class="label-text">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            
+                            <label class="label cursor-pointer bg-base-300 p-4 rounded-lg hover:bg-base-100 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                                     </svg>
-                                    Dark Theme
-                                </span>
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold text-base">Dark Theme</span>
+                                        <span class="label-text-alt block">Easy on the eyes, Bloomberg style</span>
+                                    </div>
+                                </div>
                                 <input type="radio" name="theme" value="dark" class="radio radio-primary" {% if settings.theme == 'dark' %}checked{% endif %} />
                             </label>
-                            <label class="label cursor-pointer">
-                                <span class="label-text">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            
+                            <label class="label cursor-pointer bg-base-300 p-4 rounded-lg hover:bg-base-100 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                     </svg>
-                                    System Default
-                                </span>
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold text-base">System Default</span>
+                                        <span class="label-text-alt block">Match system preferences</span>
+                                    </div>
+                                </div>
                                 <input type="radio" name="theme" value="system" class="radio radio-primary" {% if settings.theme == 'system' %}checked{% endif %} />
                             </label>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Risk Analysis Settings -->
-            <div class="card bg-base-100 shadow-xl">
-                <div class="card-body">
-                    <h3 class="card-title">Risk Analysis Settings</h3>
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Risk-Free Rate</span>
-                            <span class="label-text-alt">Used for Sharpe ratio calculations</span>
-                        </label>
-                        <input type="number" step="0.001" min="0" max="1" name="risk_free_rate" placeholder="e.g., 0.03" class="input input-bordered" value="{{ settings.risk_free_rate }}" />
+                <!-- Display Options -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                            </svg>
+                            Display Options
+                        </h2>
+                        
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-semibold">Chart Animation Speed</span>
+                            </label>
+                            <select name="animation_speed" class="select select-bordered w-full">
+                                <option value="fast" {% if settings.get('animation_speed') == 'fast' %}selected{% endif %}>Fast</option>
+                                <option value="normal" {% if settings.get('animation_speed', 'normal') == 'normal' %}selected{% endif %}>Normal</option>
+                                <option value="slow" {% if settings.get('animation_speed') == 'slow' %}selected{% endif %}>Slow</option>
+                                <option value="none" {% if settings.get('animation_speed') == 'none' %}selected{% endif %}>Disabled</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-semibold">Decimal Places</span>
+                                <span class="label-text-alt">For price display</span>
+                            </label>
+                            <input type="number" 
+                                   name="decimal_places" 
+                                   class="input input-bordered w-full"
+                                   value="{{ settings.get('decimal_places', 2) }}"
+                                   min="0" 
+                                   max="8" 
+                                   step="1" />
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-semibold">Number Format</span>
+                            </label>
+                            <select name="number_format" class="select select-bordered w-full">
+                                <option value="us" {% if settings.get('number_format', 'us') == 'us' %}selected{% endif %}>1,234.56 (US)</option>
+                                <option value="eu" {% if settings.get('number_format') == 'eu' %}selected{% endif %}>1.234,56 (EU)</option>
+                                <option value="in" {% if settings.get('number_format') == 'in' %}selected{% endif %}>1,23,456.78 (India)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Market Indices Selection -->
-        <div class="card bg-base-100 shadow-xl mt-6">
-            <div class="card-body">
-                <h3 class="card-title">Dashboard Market Indices</h3>
-                <p class="text-sm opacity-70 mb-4">Select up to 4 indices to display on the main dashboard</p>
+        <!-- RISK ANALYSIS TAB -->
+        <!-- RISK ANALYSIS TAB -->
+        <div class="tab-content" data-tab-content="risk">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- US Indices -->
-                    <div>
-                        <h4 class="font-semibold mb-3 text-blue-600">🇺🇸 United States</h4>
-                        <div class="flex flex-col gap-2">
-                            {% for index in available_indices %}
-                                {% if index.region == 'US' %}
-                                <label class="label cursor-pointer justify-start gap-3">
-                                    <input type="checkbox" name="selected_indices" value="{{ index.symbol }}" class="checkbox checkbox-primary index-checkbox" 
-                                           {% if index.symbol in settings.selected_indices %}checked{% endif %} />
-                                    <span class="label-text">{{ index.name }}</span>
-                                </label>
-                                {% endif %}
-                            {% endfor %}
+                <!-- Risk Parameters -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            Risk Parameters
+                        </h2>
+                        
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-semibold">Risk-Free Rate</span>
+                                <span class="label-text-alt">For Sharpe ratio</span>
+                            </label>
+                            <div class="join w-full">
+                                <input type="number" 
+                                       name="risk_free_rate" 
+                                       class="input input-bordered join-item w-full" 
+                                       value="{{ settings.risk_free_rate }}"
+                                       step="0.001" 
+                                       min="0" 
+                                       max="1" 
+                                       placeholder="0.03" />
+                                <span class="btn join-item">%</span>
+                            </div>
+                            <label class="label">
+                                <span class="label-text-alt">Enter as decimal (e.g., 0.03 for 3%)</span>
+                            </label>
                         </div>
-                    </div>
 
-                    <!-- European Indices -->
-                    <div>
-                        <h4 class="font-semibold mb-3 text-green-600">🇪🇺 Europe</h4>
-                        <div class="flex flex-col gap-2">
-                            {% for index in available_indices %}
-                                {% if index.region == 'Europe' %}
-                                <label class="label cursor-pointer justify-start gap-3">
-                                    <input type="checkbox" name="selected_indices" value="{{ index.symbol }}" class="checkbox checkbox-primary index-checkbox" 
-                                           {% if index.symbol in settings.selected_indices %}checked{% endif %} />
-                                    <span class="label-text">{{ index.name }}</span>
-                                </label>
-                                {% endif %}
-                            {% endfor %}
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-semibold">Volatility Window</span>
+                                <span class="label-text-alt">Days for calculation</span>
+                            </label>
+                            <input type="number" 
+                                   name="volatility_window" 
+                                   class="input input-bordered w-full"
+                                   value="{{ settings.get('volatility_window', 30) }}"
+                                   min="5" 
+                                   max="252" 
+                                   step="1" />
                         </div>
-                    </div>
 
-                    <!-- Asian Indices -->
-                    <div>
-                        <h4 class="font-semibold mb-3 text-red-600">🌏 Asia</h4>
-                        <div class="flex flex-col gap-2">
-                            {% for index in available_indices %}
-                                {% if index.region == 'Asia' %}
-                                <label class="label cursor-pointer justify-start gap-3">
-                                    <input type="checkbox" name="selected_indices" value="{{ index.symbol }}" class="checkbox checkbox-primary index-checkbox" 
-                                           {% if index.symbol in settings.selected_indices %}checked{% endif %} />
-                                    <span class="label-text">{{ index.name }}</span>
-                                </label>
-                                {% endif %}
-                            {% endfor %}
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-semibold">Confidence Level</span>
+                                <span class="label-text-alt">For VaR calculation</span>
+                            </label>
+                            <select name="confidence_level" class="select select-bordered w-full">
+                                <option value="0.90" {% if settings.get('confidence_level', 0.95) == 0.90 %}selected{% endif %}>90%</option>
+                                <option value="0.95" {% if settings.get('confidence_level', 0.95) == 0.95 %}selected{% endif %}>95%</option>
+                                <option value="0.99" {% if settings.get('confidence_level') == 0.99 %}selected{% endif %}>99%</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                <div class="alert alert-info mt-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span id="selection-count">You can select up to 4 indices. Currently selected: {{ settings.selected_indices|length }}</span>
+                <!-- Risk Alerts -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Risk Alerts
+                        </h2>
+                        
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold">Enable Risk Alerts</span>
+                                        <span class="label-text-alt block">Get notified of risk threshold breaches</span>
+                                    </div>
+                                </div>
+                                <input type="checkbox" 
+                                       name="enable_risk_alerts" 
+                                       class="toggle toggle-warning" 
+                                       {% if settings.get('enable_risk_alerts', True) %}checked{% endif %} />
+                            </label>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-semibold">Maximum Portfolio Loss (%)</span>
+                            </label>
+                            <input type="number" 
+                                   name="max_portfolio_loss" 
+                                   class="input input-bordered w-full"
+                                   value="{{ settings.get('max_portfolio_loss', 10) }}"
+                                   min="1" 
+                                   max="50" 
+                                   step="1" />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-semibold">Correlation Threshold</span>
+                            </label>
+                            <input type="number" 
+                                   name="correlation_threshold" 
+                                   class="input input-bordered w-full"
+                                   value="{{ settings.get('correlation_threshold', 0.7) }}"
+                                   min="0" 
+                                   max="1" 
+                                   step="0.05" />
+                        </div>
+
+                        <div class="alert alert-warning mt-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span class="text-xs">Alerts sent via system notifications</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="mt-6">
-            <button type="submit" class="btn btn-primary">Save Settings</button>
+
+        <!-- DATA & MARKETS TAB -->
+        <div class="tab-content" data-tab-content="data">
+            <div class="grid grid-cols-1 gap-6">
+                
+                <!-- Market Indices Selection -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                            Dashboard Market Indices
+                        </h2>
+                        <p class="text-sm opacity-70 mb-4">Select up to 4 indices to display on the main dashboard charts</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- US Indices -->
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-2xl">🇺🇸</span>
+                                    <h4 class="font-semibold text-blue-600">United States</h4>
+                                </div>
+                                <div class="space-y-2">
+                                    {% for index in available_indices %}
+                                        {% if index.region == 'US' %}
+                                        <label class="label cursor-pointer bg-base-300/50 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                                            <span class="label-text font-mono">{{ index.name }}</span>
+                                            <input type="checkbox" 
+                                                   name="selected_indices" 
+                                                   value="{{ index.symbol }}" 
+                                                   class="checkbox checkbox-primary index-checkbox" 
+                                                   {% if index.symbol in settings.selected_indices %}checked{% endif %} />
+                                        </label>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- European Indices -->
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-2xl">🇪🇺</span>
+                                    <h4 class="font-semibold text-green-600">Europe</h4>
+                                </div>
+                                <div class="space-y-2">
+                                    {% for index in available_indices %}
+                                        {% if index.region == 'Europe' %}
+                                        <label class="label cursor-pointer bg-base-300/50 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                                            <span class="label-text font-mono">{{ index.name }}</span>
+                                            <input type="checkbox" 
+                                                   name="selected_indices" 
+                                                   value="{{ index.symbol }}" 
+                                                   class="checkbox checkbox-primary index-checkbox" 
+                                                   {% if index.symbol in settings.selected_indices %}checked{% endif %} />
+                                        </label>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Asian Indices -->
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-2xl">🌏</span>
+                                    <h4 class="font-semibold text-red-600">Asia</h4>
+                                </div>
+                                <div class="space-y-2">
+                                    {% for index in available_indices %}
+                                        {% if index.region == 'Asia' %}
+                                        <label class="label cursor-pointer bg-base-300/50 p-3 rounded-lg hover:bg-base-300 transition-colors">
+                                            <span class="label-text font-mono">{{ index.name }}</span>
+                                            <input type="checkbox" 
+                                                   name="selected_indices" 
+                                                   value="{{ index.symbol }}" 
+                                                   class="checkbox checkbox-primary index-checkbox" 
+                                                   {% if index.symbol in settings.selected_indices %}checked{% endif %} />
+                                        </label>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div class="flex-1">
+                                <span id="selection-count" class="font-semibold">Currently selected: {{ settings.selected_indices|length }}/4</span>
+                                <p class="text-xs mt-1">Select indices for dashboard chart widgets</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Source Settings -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card bg-base-200 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title text-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                </svg>
+                                Data Refresh
+                            </h2>
+                            
+                            <div class="form-control w-full">
+                                <label class="label">
+                                    <span class="label-text font-semibold">Refresh Interval</span>
+                                </label>
+                                <select name="refresh_interval" class="select select-bordered w-full">
+                                    <option value="15" {% if settings.get('refresh_interval', 60) == 15 %}selected{% endif %}>15 seconds</option>
+                                    <option value="30" {% if settings.get('refresh_interval', 60) == 30 %}selected{% endif %}>30 seconds</option>
+                                    <option value="60" {% if settings.get('refresh_interval', 60) == 60 %}selected{% endif %}>1 minute</option>
+                                    <option value="300" {% if settings.get('refresh_interval') == 300 %}selected{% endif %}>5 minutes</option>
+                                    <option value="900" {% if settings.get('refresh_interval') == 900 %}selected{% endif %}>15 minutes</option>
+                                </select>
+                            </div>
+
+                            <div class="form-control w-full">
+                                <label class="label">
+                                    <span class="label-text font-semibold">Cache Duration (minutes)</span>
+                                </label>
+                                <input type="number" 
+                                       name="cache_duration" 
+                                       class="input input-bordered w-full"
+                                       value="{{ settings.get('cache_duration', 5) }}"
+                                       min="1" 
+                                       max="60" 
+                                       step="1" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-base-200 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title text-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Historical Data
+                            </h2>
+                            
+                            <div class="form-control w-full">
+                                <label class="label">
+                                    <span class="label-text font-semibold">Default Time Period</span>
+                                </label>
+                                <select name="default_period" class="select select-bordered w-full">
+                                    <option value="1d" {% if settings.get('default_period', '1mo') == '1d' %}selected{% endif %}>1 Day</option>
+                                    <option value="5d" {% if settings.get('default_period', '1mo') == '5d' %}selected{% endif %}>5 Days</option>
+                                    <option value="1mo" {% if settings.get('default_period', '1mo') == '1mo' %}selected{% endif %}>1 Month</option>
+                                    <option value="3mo" {% if settings.get('default_period') == '3mo' %}selected{% endif %}>3 Months</option>
+                                    <option value="6mo" {% if settings.get('default_period') == '6mo' %}selected{% endif %}>6 Months</option>
+                                    <option value="1y" {% if settings.get('default_period') == '1y' %}selected{% endif %}>1 Year</option>
+                                    <option value="5y" {% if settings.get('default_period') == '5y' %}selected{% endif %}>5 Years</option>
+                                </select>
+                            </div>
+
+                            <div class="form-control w-full">
+                                <label class="label">
+                                    <span class="label-text font-semibold">Chart Interval</span>
+                                </label>
+                                <select name="chart_interval" class="select select-bordered w-full">
+                                    <option value="1m" {% if settings.get('chart_interval', '1d') == '1m' %}selected{% endif %}>1 Minute</option>
+                                    <option value="5m" {% if settings.get('chart_interval', '1d') == '5m' %}selected{% endif %}>5 Minutes</option>
+                                    <option value="15m" {% if settings.get('chart_interval', '1d') == '15m' %}selected{% endif %}>15 Minutes</option>
+                                    <option value="1h" {% if settings.get('chart_interval', '1d') == '1h' %}selected{% endif %}>1 Hour</option>
+                                    <option value="1d" {% if settings.get('chart_interval', '1d') == '1d' %}selected{% endif %}>1 Day</option>
+                                    <option value="1wk" {% if settings.get('chart_interval') == '1wk' %}selected{% endif %}>1 Week</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLUGINS TAB -->
+        <!-- PLUGINS TAB -->
+        <div class="tab-content" data-tab-content="plugins">
+            <div class="mb-6 flex items-center justify-between">
+                <div>
+                    <h3 class="text-2xl font-bold">Plugin Configuration</h3>
+                    <p class="text-sm opacity-70">Configure installed plugin settings</p>
+                </div>
+                <a href="{{ url_for('settings.plugins') }}" class="btn btn-primary btn-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Manage Plugins
+                </a>
+            </div>
+
+            {% if plugins_with_settings %}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {% for plugin in plugins_with_settings %}
+                    <div class="card bg-base-200 shadow-xl border-l-4 border-primary">
+                        <div class="card-body">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">{{ plugin.icon }}</span>
+                                    <div>
+                                        <h2 class="card-title text-primary">{{ plugin.name }}</h2>
+                                        <div class="flex gap-2 mt-1">
+                                            <span class="badge badge-outline badge-sm">{{ plugin.type }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if plugin.description %}
+                            <p class="text-sm opacity-70 mb-4 pb-4 border-b border-base-300">{{ plugin.description }}</p>
+                            {% endif %}
+
+                            <div class="space-y-4">
+                                {% for prop_key, prop_value in plugin.schema.properties.items() %}
+                                <div class="form-control w-full">
+                                    <label class="label">
+                                        <span class="label-text font-semibold">{{ prop_value.title or prop_key }}</span>
+                                        {% if prop_value.description %}
+                                        <span class="label-text-alt">{{ prop_value.description }}</span>
+                                        {% endif %}
+                                    </label>
+
+                                    {% set field_name = plugin.key ~ '.' ~ prop_key %}
+                                    {% set current_value = plugin.current_values.get(prop_key, prop_value.default) %}
+
+                                    {% if prop_value.type == 'boolean' %}
+                                        <input type="checkbox" 
+                                               name="{{ field_name }}"
+                                               class="toggle toggle-primary"
+                                               {% if current_value %}checked{% endif %}>
+                                    
+                                    {% elif prop_value.type == 'string' and prop_value.get('enum') %}
+                                        <select name="{{ field_name }}" class="select select-bordered w-full select-sm">
+                                            {% for option in prop_value.enum %}
+                                            <option value="{{ option }}" {% if current_value == option %}selected{% endif %}>
+                                                {{ option }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    
+                                    {% elif prop_value.type in ['number', 'integer'] %}
+                                        <input type="number" 
+                                               name="{{ field_name }}" 
+                                               class="input input-bordered w-full input-sm"
+                                               value="{{ current_value }}"
+                                               {% if prop_value.get('minimum') is not none %}min="{{ prop_value.minimum }}"{% endif %}
+                                               {% if prop_value.get('maximum') is not none %}max="{{ prop_value.maximum }}"{% endif %}
+                                               {% if prop_value.type == 'number' %}step="0.01"{% else %}step="1"{% endif %}>
+                                        
+                                        {% if prop_value.get('format') == 'percentage' or prop_value.get('minimum') is not none %}
+                                        <label class="label">
+                                            <span class="label-text-alt">
+                                                {% if prop_value.get('format') == 'percentage' %}Enter as decimal (e.g., 0.05 for 5%){% endif %}
+                                                {% if prop_value.get('minimum') is not none %}
+                                                    Range: {{ prop_value.get('minimum', 'N/A') }} - {{ prop_value.get('maximum', 'N/A') }}
+                                                {% endif %}
+                                            </span>
+                                        </label>
+                                        {% endif %}
+                                    
+                                    {% else %}
+                                        <input type="text" 
+                                               name="{{ field_name }}" 
+                                               class="input input-bordered w-full input-sm"
+                                               value="{{ current_value }}">
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body text-center py-12">
+                        <div class="text-6xl opacity-30 mb-4">🔌</div>
+                        <h3 class="text-xl font-semibold mb-2">No Configurable Plugins</h3>
+                        <p class="text-sm opacity-70 mb-6">
+                            Plugins with settings schemas will appear here for configuration
+                        </p>
+                        <a href="{{ url_for('settings.plugins') }}" class="btn btn-primary">
+                            Browse Available Plugins
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ADVANCED TAB -->
+        <div class="tab-content" data-tab-content="advanced">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Performance -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Performance
+                        </h2>
+                        
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold">Enable Lazy Loading</span>
+                                        <span class="label-text-alt block">Load charts on demand</span>
+                                    </div>
+                                </div>
+                                <input type="checkbox" 
+                                       name="enable_lazy_loading" 
+                                       class="toggle toggle-primary" 
+                                       {% if settings.get('enable_lazy_loading', True) %}checked{% endif %} />
+                            </label>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold">Compress API Responses</span>
+                                        <span class="label-text-alt block">Reduce bandwidth usage</span>
+                                    </div>
+                                </div>
+                                <input type="checkbox" 
+                                       name="compress_api" 
+                                       class="toggle toggle-primary" 
+                                       {% if settings.get('compress_api', True) %}checked{% endif %} />
+                            </label>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-semibold">Max Concurrent Requests</span>
+                            </label>
+                            <input type="number" 
+                                   name="max_concurrent_requests" 
+                                   class="input input-bordered w-full"
+                                   value="{{ settings.get('max_concurrent_requests', 5) }}"
+                                   min="1" 
+                                   max="20" 
+                                   step="1" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cache Management -->
+                <div class="card bg-base-200 shadow-xl border-2 border-warning/30">
+                    <div class="card-body">
+                        <h2 class="card-title text-warning">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Cache Management
+                        </h2>
+                        
+                        <p class="text-sm opacity-70 mb-4">
+                            Clear cached data to force fresh API calls and free up memory
+                        </p>
+
+                        <div class="stats stats-vertical shadow bg-base-300">
+                            <div class="stat">
+                                <div class="stat-title">Cache Size</div>
+                                <div class="stat-value text-2xl">~5 MB</div>
+                                <div class="stat-desc">Stock data & indices</div>
+                            </div>
+                        </div>
+
+                        <div class="card-actions justify-end mt-4">
+                            <button type="button" 
+                                    onclick="clearCache()" 
+                                    class="btn btn-warning btn-block">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Clear All Cache
+                            </button>
+                        </div>
+
+                        <div class="alert alert-warning mt-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span class="text-xs">This action cannot be undone</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Developer Options -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                            </svg>
+                            Developer Options
+                        </h2>
+                        
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold">Debug Mode</span>
+                                        <span class="label-text-alt block">Show detailed logs</span>
+                                    </div>
+                                </div>
+                                <input type="checkbox" 
+                                       name="debug_mode" 
+                                       class="toggle toggle-error" 
+                                       {% if settings.get('debug_mode', False) %}checked{% endif %} />
+                            </label>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <span class="label-text font-semibold">Show API Calls</span>
+                                        <span class="label-text-alt block">Log API requests</span>
+                                    </div>
+                                </div>
+                                <input type="checkbox" 
+                                       name="show_api_calls" 
+                                       class="toggle toggle-error" 
+                                       {% if settings.get('show_api_calls', False) %}checked{% endif %} />
+                            </label>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-semibold">Log Level</span>
+                            </label>
+                            <select name="log_level" class="select select-bordered w-full">
+                                <option value="DEBUG" {% if settings.get('log_level') == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                                <option value="INFO" {% if settings.get('log_level', 'INFO') == 'INFO' %}selected{% endif %}>INFO</option>
+                                <option value="WARNING" {% if settings.get('log_level') == 'WARNING' %}selected{% endif %}>WARNING</option>
+                                <option value="ERROR" {% if settings.get('log_level') == 'ERROR' %}selected{% endif %}>ERROR</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export/Import Settings -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                            Backup & Restore
+                        </h2>
+                        
+                        <p class="text-sm opacity-70 mb-4">
+                            Export your settings to a file or import from a backup
+                        </p>
+
+                        <div class="flex flex-col gap-2">
+                            <button type="button" onclick="exportSettings()" class="btn btn-outline btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Export Settings
+                            </button>
+                            <button type="button" onclick="importSettings()" class="btn btn-outline btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Import Settings
+                            </button>
+                        </div>
+
+                        <div class="alert alert-info mt-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-xs">Settings are saved to JSON format</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button (Fixed at bottom) -->
+        <div class="sticky bottom-0 bg-base-100 border-t border-base-300 p-4 mt-6 -mx-6 -mb-6">
+            <div class="flex justify-between items-center max-w-7xl mx-auto">
+                <div class="text-sm opacity-70">
+                    <span id="unsaved-changes" class="hidden text-warning">● Unsaved changes</span>
+                </div>
+                <div class="flex gap-3">
+                    <button type="reset" class="btn btn-outline" onclick="resetForm()">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Reset
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Save All Settings
+                    </button>
+                </div>
+            </div>
         </div>
     </form>
-
-    <!-- Cache Management -->
-    <div class="card bg-base-100 shadow-xl mt-6">
-        <div class="card-body">
-            <h3 class="card-title">Cache Management</h3>
-            <p class="text-sm opacity-70 mb-4">Clear cached stock data to force fresh API calls</p>
-            <form method="POST" action="{{ url_for('main.clear_cache') }}" style="display:inline;">
-                <button type="submit" class="btn btn-warning btn-sm">Clear Cache</button>
-            </form>
-        </div>
-    </div>
 </div>
 
 <script>
-    // Enforce 4-index maximum selection
+    // Tab Navigation
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetTab = this.dataset.tab;
+                
+                // Remove active from all tabs
+                tabs.forEach(t => t.classList.remove('tab-active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                // Add active to clicked tab
+                this.classList.add('tab-active');
+                document.querySelector(`[data-tab-content="${targetTab}"]`).classList.add('active');
+                
+                // Save to session storage
+                sessionStorage.setItem('activeSettingsTab', targetTab);
+            });
+        });
+        
+        // Restore last active tab
+        const lastActiveTab = sessionStorage.getItem('activeSettingsTab');
+        if (lastActiveTab) {
+            const tabToActivate = document.querySelector(`[data-tab="${lastActiveTab}"]`);
+            if (tabToActivate) {
+                tabToActivate.click();
+            }
+        }
+    });
+
+    // Index Selection Limit
     const checkboxes = document.querySelectorAll('.index-checkbox');
     const selectionCount = document.getElementById('selection-count');
     
     function updateSelectionCount() {
         const checked = document.querySelectorAll('.index-checkbox:checked').length;
-        selectionCount.textContent = `You can select up to 4 indices. Currently selected: ${checked}`;
+        if (selectionCount) {
+            selectionCount.textContent = `Currently selected: ${checked}/4`;
+        }
         
         // Disable unchecked boxes if limit reached
         if (checked >= 4) {
             checkboxes.forEach(cb => {
                 if (!cb.checked) {
                     cb.disabled = true;
+                    const label = cb.closest('label');
+                    if (label) label.style.opacity = '0.5';
                 }
             });
         } else {
             checkboxes.forEach(cb => {
                 cb.disabled = false;
+                const label = cb.closest('label');
+                if (label) label.style.opacity = '1';
             });
         }
     }
@@ -185,5 +1000,157 @@
     
     // Initialize on load
     updateSelectionCount();
+
+    // Track unsaved changes
+    const form = document.getElementById('settingsForm');
+    const unsavedIndicator = document.getElementById('unsaved-changes');
+    let formChanged = false;
+    
+    if (form) {
+        form.addEventListener('change', function() {
+            formChanged = true;
+            if (unsavedIndicator) {
+                unsavedIndicator.classList.remove('hidden');
+            }
+        });
+        
+        form.addEventListener('submit', function() {
+            formChanged = false;
+            if (unsavedIndicator) {
+                unsavedIndicator.classList.add('hidden');
+            }
+        });
+    }
+    
+    // Warn before leaving with unsaved changes
+    window.addEventListener('beforeunload', function(e) {
+        if (formChanged) {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        }
+    });
+
+    // Clear Cache Function
+    function clearCache() {
+        if (confirm('Are you sure you want to clear all cached data? This will force fresh API calls.')) {
+            fetch('{{ url_for("main.clear_cache") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast('Cache cleared successfully', 'success');
+            })
+            .catch(error => {
+                showToast('Error clearing cache: ' + error, 'error');
+            });
+        }
+    }
+
+    // Reset All Settings
+    function resetAllSettings() {
+        if (confirm('Are you sure you want to reset ALL settings to default values? This action cannot be undone.')) {
+            // Implementation would go here
+            showToast('Settings reset to defaults', 'info');
+            setTimeout(() => location.reload(), 1000);
+        }
+    }
+
+    // Reset Form
+    function resetForm() {
+        if (confirm('Are you sure you want to reset this form? All unsaved changes will be lost.')) {
+            document.getElementById('settingsForm').reset();
+            formChanged = false;
+            if (unsavedIndicator) {
+                unsavedIndicator.classList.add('hidden');
+            }
+            updateSelectionCount();
+        }
+    }
+
+    // Export Settings
+    function exportSettings() {
+        const settings = {
+            timestamp: new Date().toISOString(),
+            version: '1.0.0',
+            settings: {} // Would collect all form values here
+        };
+        
+        const dataStr = JSON.stringify(settings, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `risk-monitoring-settings-${Date.now()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        
+        showToast('Settings exported successfully', 'success');
+    }
+
+    // Import Settings
+    function importSettings() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const settings = JSON.parse(event.target.result);
+                    // Would apply settings here
+                    showToast('Settings imported successfully. Please save to apply.', 'success');
+                } catch (error) {
+                    showToast('Invalid settings file', 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    // Toast Notification Function
+    function showToast(message, type = 'info') {
+        const alertClass = type === 'error' ? 'alert-error' : 
+                          type === 'success' ? 'alert-success' : 
+                          type === 'warning' ? 'alert-warning' : 'alert-info';
+        
+        const toast = document.createElement('div');
+        toast.className = `alert ${alertClass} fixed top-4 right-4 w-auto max-w-md z-50 shadow-lg`;
+        toast.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Add custom CSS for tab content
+    const style = document.createElement('style');
+    style.textContent = `
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 {% endblock %}

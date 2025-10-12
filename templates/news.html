@@ -51,6 +51,94 @@
         {% endif %}
     {% endwith %}
 
+    <!-- Sentiment Analysis Dashboard -->
+    {% if sentiment and sentiment.total_articles > 0 %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Overall Sentiment Gauge -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-lg">Market Sentiment ({{ sentiment.days_analyzed }} Days)</h2>
+                <div class="flex flex-col items-center justify-center py-4">
+                    {% set overall = sentiment.overall_sentiment %}
+                    {% if overall == 'positive' %}
+                        <div class="radial-progress text-success" style="--value:{{ sentiment.sentiment_percentages.positive }}; --size:10rem; --thickness: 1rem;" role="progressbar">
+                            {{ sentiment.sentiment_percentages.positive }}%
+                        </div>
+                        <p class="mt-4 text-lg font-bold text-success"> Positive</p>
+                    {% elif overall == 'negative' %}
+                        <div class="radial-progress text-error" style="--value:{{ sentiment.sentiment_percentages.negative }}; --size:10rem; --thickness: 1rem;" role="progressbar">
+                            {{ sentiment.sentiment_percentages.negative }}%
+                        </div>
+                        <p class="mt-4 text-lg font-bold text-error"> Negative</p>
+                    {% else %}
+                        <div class="radial-progress text-warning" style="--value:{{ sentiment.sentiment_percentages.neutral }}; --size:10rem; --thickness: 1rem;" role="progressbar">
+                            {{ sentiment.sentiment_percentages.neutral }}%
+                        </div>
+                        <p class="mt-4 text-lg font-bold text-warning"> Neutral</p>
+                    {% endif %}
+                    <p class="text-sm opacity-60 mt-2">{{ sentiment.total_articles }} articles analyzed</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sentiment Breakdown -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-lg">Sentiment Breakdown</h2>
+                <div class="space-y-4 mt-4">
+                    <!-- Positive -->
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="font-semibold text-success">Positive</span>
+                            <span>{{ sentiment.sentiment_counts.positive }} ({{ sentiment.sentiment_percentages.positive }}%)</span>
+                        </div>
+                        <progress class="progress progress-success w-full" value="{{ sentiment.sentiment_percentages.positive }}" max="100"></progress>
+                    </div>
+                    
+                    <!-- Neutral -->
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="font-semibold text-warning">Neutral</span>
+                            <span>{{ sentiment.sentiment_counts.neutral }} ({{ sentiment.sentiment_percentages.neutral }}%)</span>
+                        </div>
+                        <progress class="progress progress-warning w-full" value="{{ sentiment.sentiment_percentages.neutral }}" max="100"></progress>
+                    </div>
+                    
+                    <!-- Negative -->
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="font-semibold text-error">Negative</span>
+                            <span>{{ sentiment.sentiment_counts.negative }} ({{ sentiment.sentiment_percentages.negative }}%)</span>
+                        </div>
+                        <progress class="progress progress-error w-full" value="{{ sentiment.sentiment_percentages.negative }}" max="100"></progress>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Confidence Scores -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-lg">Average Confidence</h2>
+                <div class="space-y-3 mt-4">
+                    <div class="stat p-3 bg-success bg-opacity-10 rounded-lg">
+                        <div class="stat-title text-xs">Positive Score</div>
+                        <div class="stat-value text-2xl text-success">{{ (sentiment.average_scores.positive * 100)|round(1) }}%</div>
+                    </div>
+                    <div class="stat p-3 bg-warning bg-opacity-10 rounded-lg">
+                        <div class="stat-title text-xs">Neutral Score</div>
+                        <div class="stat-value text-2xl text-warning">{{ (sentiment.average_scores.neutral * 100)|round(1) }}%</div>
+                    </div>
+                    <div class="stat p-3 bg-error bg-opacity-10 rounded-lg">
+                        <div class="stat-title text-xs">Negative Score</div>
+                        <div class="stat-value text-2xl text-error">{{ (sentiment.average_scores.negative * 100)|round(1) }}%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {% if articles %}
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body p-0">

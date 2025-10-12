@@ -1,5 +1,5 @@
 """API routes for async data loading"""
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from services.portfolio_service import get_portfolio_data, calculate_portfolio_dashboard_data
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')

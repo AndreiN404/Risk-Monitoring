@@ -1,131 +1,292 @@
 <!DOCTYPE HTML>
-<html lang="en" data-theme="{{ session.get('theme', 'light') }}">
+<html lang="en" data-theme="dark">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-        <title>{% block title %}Risk Engine{% endblock %}</title>
+        <title>{% block title %}Risk Monitoring | Bloomberg Terminal Style{% endblock %}</title>
         <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         
-        <script>
-            // Theme management
-            function initTheme() {
-                const savedTheme = '{{ session.get('theme', 'light') }}';
-                const html = document.documentElement;
-                
-                if (savedTheme === 'system') {
-                    // Use system preference
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-                    
-                    // Listen for system theme changes
-                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                        if ('{{ session.get('theme', 'light') }}' === 'system') {
-                            html.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-                        }
-                    });
-                } else {
-                    // Use explicit theme
-                    html.setAttribute('data-theme', savedTheme);
-                }
+        <!-- Plugin Theme CSS (Bloomberg Dark by default) -->
+        {% if session.get('active_plugin_theme') or True %}
+        <style id="plugin-theme-css">
+            {{ plugin_theme_css|safe }}
+        </style>
+        {% endif %}
+        
+        <!-- Bloomberg Terminal Custom Enhancements -->
+        <style>
+            /* Bloomberg Professional Typography */
+            @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+            
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                letter-spacing: -0.01em;
             }
             
-            // Set theme function for quick toggle
-            function setTheme(theme) {
-                const html = document.documentElement;
-                
-                if (theme === 'system') {
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-                } else {
-                    html.setAttribute('data-theme', theme);
-                }
-                
-                // Save to server via AJAX
-                fetch('/set_theme', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({theme: theme})
-                }).catch(console.error);
+            code, pre, .font-mono {
+                font-family: 'IBM Plex Mono', 'Courier New', monospace;
             }
             
-            // Initialize theme on page load
-            document.addEventListener('DOMContentLoaded', initTheme);
-        </script>
+            /* Bloomberg Scrollbar */
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            
+            ::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.2);
+            }
+            
+            ::-webkit-scrollbar-thumb {
+                background: rgba(255, 120, 0, 0.5);
+                border-radius: 4px;
+            }
+            
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 120, 0, 0.7);
+            }
+            
+            /* Bloomberg Navbar Enhancement */
+            .bloomberg-navbar {
+                background: linear-gradient(180deg, #0a0e1a 0%, #0d1117 100%);
+                border-bottom: 2px solid rgba(255, 120, 0, 0.3);
+                backdrop-filter: blur(10px);
+            }
+            
+            /* Bloomberg Button Styles */
+            .btn-bloomberg {
+                background: linear-gradient(135deg, #ff7800 0%, #ff9500 100%);
+                border: none;
+                color: #000;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                transition: all 0.2s;
+            }
+            
+            .btn-bloomberg:hover {
+                background: linear-gradient(135deg, #ff9500 0%, #ffb020 100%);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(255, 120, 0, 0.4);
+            }
+            
+            /* Bloomberg Card Enhancement */
+            .bloomberg-card {
+                background: linear-gradient(135deg, rgba(13, 17, 23, 0.95) 0%, rgba(10, 14, 26, 0.95) 100%);
+                border: 1px solid rgba(255, 120, 0, 0.15);
+                border-radius: 4px;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .bloomberg-card:hover {
+                border-color: rgba(255, 120, 0, 0.4);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 120, 0, 0.1);
+                transform: translateY(-2px);
+            }
+            
+            /* Bloomberg Status Indicators */
+            .status-positive { color: #00ff87; }
+            .status-negative { color: #ff4757; }
+            .status-neutral { color: #ffa502; }
+            
+            /* Bloomberg Ticker Tape Animation */
+            @keyframes tickerScroll {
+                0% { transform: translateX(100%); }
+                100% { transform: translateX(-100%); }
+            }
+            
+            /* Bloomberg Glow Effect */
+            .bloomberg-glow {
+                box-shadow: 0 0 10px rgba(255, 120, 0, 0.2),
+                            0 0 20px rgba(255, 120, 0, 0.1),
+                            inset 0 0 10px rgba(255, 120, 0, 0.05);
+            }
+            
+            /* Professional Table Styling */
+            .bloomberg-table {
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+            
+            .bloomberg-table thead {
+                background: linear-gradient(180deg, rgba(255, 120, 0, 0.15) 0%, rgba(255, 120, 0, 0.05) 100%);
+            }
+            
+            .bloomberg-table th {
+                border-bottom: 2px solid rgba(255, 120, 0, 0.3);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                font-size: 0.75rem;
+            }
+            
+            .bloomberg-table tbody tr {
+                transition: background 0.15s;
+            }
+            
+            .bloomberg-table tbody tr:hover {
+                background: rgba(255, 120, 0, 0.05);
+            }
+            
+            /* Navigation Active State */
+            .nav-item-active {
+                background: linear-gradient(90deg, rgba(255, 120, 0, 0.2) 0%, transparent 100%);
+                border-left: 3px solid #ff7800;
+            }
+        </style>
     </head>
-    <body>
-        <header>
-        </header>
-        <div class="navbar bg-base-100 shadow-sm">
-  <div class="navbar-start">
-    <div class="dropdown">
-      <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /> </svg>
-      </div>
-      <ul
-        tabindex="0"
-        class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
-        <li><a>Item 1</a></li>
-        <li>
-          <a>Parent</a>
-          <ul class="p-2">
-            <li><a>Submenu 1</a></li>
-            <li><a>Submenu 2</a></li>
-          </ul>
-        </li>
-        <li><a>Item 3</a></li>
-      </ul>
-    </div>
-    <a class="btn btn-ghost text-xl" href="{{ url_for('main.index') }}">Risk Engine</a>
-  </div>
-  <div class="navbar-center hidden lg:flex">
-    <ul class="menu menu-horizontal px-1">
-      <li><a href="{{ url_for('main.index') }}">Dashboard</a></li>
-      <li><a href="{{ url_for('portfolio.portfolio_manager') }}">Portfolio</a></li>
-      <li><a href="{{ url_for('analysis.analysis') }}">Analysis</a></li>
-      <li><a href="{{ url_for('news.news') }}">News</a></li>
-      <li><a href="{{ url_for('settings.settings') }}">Settings</a></li>
-    </ul>
-  </div>
-  <div class="navbar-end">
-    <div class="dropdown dropdown-end">
-      <div tabindex="0" role="button" class="btn btn-ghost btn-circle" title="Toggle Theme">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      </div>
-      <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-        <li><a onclick="setTheme('light')">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          Light
-        </a></li>
-        <li><a onclick="setTheme('dark')">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-          Dark
-        </a></li>
-        <li><a onclick="setTheme('system')">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          System
-        </a></li>
-      </ul>
-    </div>
-  </div>
-</div>
-        <main>
+    <body class="bg-[#0a0e1a] text-gray-100">
+        <!-- Bloomberg Professional Header -->
+        <div class="bloomberg-navbar sticky top-0 z-50">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center justify-between h-14">
+                    <!-- Logo & Branding -->
+                    <div class="flex items-center space-x-4">
+                        <a href="{{ url_for('main.index') }}" class="flex items-center space-x-2 group">
+                            <div class="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded flex items-center justify-center group-hover:shadow-lg group-hover:shadow-orange-500/50 transition-all">
+                                <span class="text-black font-bold text-sm">RM</span>
+                            </div>
+                            <span class="text-lg font-bold bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">
+                                RISK MONITORING
+                            </span>
+                        </a>
+                        <div class="hidden md:flex items-center px-3 py-1 bg-orange-500/10 rounded border border-orange-500/20">
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>
+                            <span class="text-xs font-mono text-green-400">LIVE</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Navigation -->
+                    <nav class="hidden lg:flex items-center space-x-1">
+                        <a href="{{ url_for('main.index') }}" class="px-4 py-2 text-sm font-medium hover:bg-orange-500/10 rounded transition-colors {{ 'nav-item-active' if request.endpoint == 'main.index' else '' }}">
+                            <span class="mr-2">📊</span>DASHBOARD
+                        </a>
+                        <a href="{{ url_for('markets.markets') }}" class="px-4 py-2 text-sm font-medium hover:bg-orange-500/10 rounded transition-colors {{ 'nav-item-active' if request.endpoint == 'markets.markets' else '' }}">
+                            <span class="mr-2">🌐</span>MARKETS
+                        </a>
+                        <a href="{{ url_for('portfolio.portfolio_manager') }}" class="px-4 py-2 text-sm font-medium hover:bg-orange-500/10 rounded transition-colors {{ 'nav-item-active' if 'portfolio' in request.endpoint else '' }}">
+                            <span class="mr-2">💼</span>PORTFOLIO
+                        </a>
+                        <a href="{{ url_for('analysis.analysis') }}" class="px-4 py-2 text-sm font-medium hover:bg-orange-500/10 rounded transition-colors {{ 'nav-item-active' if request.endpoint == 'analysis.analysis' else '' }}">
+                            <span class="mr-2">📈</span>ANALYSIS
+                        </a>
+                        <a href="{{ url_for('news.news') }}" class="px-4 py-2 text-sm font-medium hover:bg-orange-500/10 rounded transition-colors {{ 'nav-item-active' if request.endpoint == 'news.news' else '' }}">
+                            <span class="mr-2">📰</span>NEWS
+                        </a>
+                        <a href="{{ url_for('settings.settings') }}" class="px-4 py-2 text-sm font-medium hover:bg-orange-500/10 rounded transition-colors {{ 'nav-item-active' if 'settings' in request.endpoint else '' }}">
+                            <span class="mr-2">⚙️</span>SETTINGS
+                        </a>
+                    </nav>
+                    
+                    <!-- Right Actions -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Live Time -->
+                        <div class="hidden md:flex flex-col items-end text-xs">
+                            <span class="text-orange-400 font-mono" id="live-time">--:--:--</span>
+                            <span class="text-gray-500">UTC</span>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <button class="btn btn-sm btn-bloomberg">
+                            <span class="text-xs">+ ADD POSITION</span>
+                        </button>
+                        
+                        <!-- Mobile Menu -->
+                        <div class="lg:hidden">
+                            <div class="dropdown dropdown-end">
+                                <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                    </svg>
+                                </div>
+                                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-orange-500/20">
+                                    <li><a href="{{ url_for('main.index') }}">📊 Dashboard</a></li>
+                                    <li><a href="{{ url_for('markets.markets') }}">🌐 Markets</a></li>
+                                    <li><a href="{{ url_for('portfolio.portfolio_manager') }}">💼 Portfolio</a></li>
+                                    <li><a href="{{ url_for('analysis.analysis') }}">📈 Analysis</a></li>
+                                    <li><a href="{{ url_for('news.news') }}">📰 News</a></li>
+                                    <li><a href="{{ url_for('settings.settings') }}">⚙️ Settings</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content Area -->
+        <main class="min-h-screen">
             {% block content %}
             {% endblock %}
         </main>
-        <footer>
-            <p></p>
+        
+        <!-- Bloomberg Professional Footer -->
+        <footer class="border-t border-orange-500/20 bg-gradient-to-b from-[#0a0e1a] to-black mt-12">
+            <div class="container mx-auto px-4 py-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                    <div>
+                        <h3 class="text-sm font-bold text-orange-400 mb-3">RISK MONITORING</h3>
+                        <p class="text-xs text-gray-400 leading-relaxed">
+                            Professional portfolio risk analytics and monitoring platform built with Bloomberg Terminal-style UI/UX.
+                        </p>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-gray-400 mb-3">PLATFORM</h3>
+                        <ul class="space-y-2 text-xs text-gray-500">
+                            <li><a href="{{ url_for('main.index') }}" class="hover:text-orange-400 transition-colors">Dashboard</a></li>
+                            <li><a href="{{ url_for('markets.markets') }}" class="hover:text-orange-400 transition-colors">Markets</a></li>
+                            <li><a href="{{ url_for('portfolio.portfolio_manager') }}" class="hover:text-orange-400 transition-colors">Portfolio</a></li>
+                            <li><a href="{{ url_for('analysis.analysis') }}" class="hover:text-orange-400 transition-colors">Analysis</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-gray-400 mb-3">FEATURES</h3>
+                        <ul class="space-y-2 text-xs text-gray-500">
+                            <li>Real-time Market Data</li>
+                            <li>Risk Analytics (VaR, Volatility)</li>
+                            <li>Portfolio Management</li>
+                            <li>Plugin Architecture</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-gray-400 mb-3">SYSTEM STATUS</h3>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                <span class="text-gray-500">Market Feed: <span class="text-green-400">LIVE</span></span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span class="text-gray-500">Analytics: <span class="text-green-400">ONLINE</span></span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-orange-400 rounded-full"></div>
+                                <span class="text-gray-500">Plugins: <span class="text-orange-400">{{ plugin_manager.enabled_plugins|length if plugin_manager else 8 }} ACTIVE</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-gray-600">
+                    <p>© 2025 Risk Monitoring Platform. Bloomberg-style UI/UX.</p>
+                    <p class="mt-2 md:mt-0">Powered by Flask • TailwindCSS • DaisyUI • Plugin Architecture</p>
+                </div>
+            </div>
         </footer>
+        
+        <!-- Live Clock Script -->
+        <script>
+            function updateLiveClock() {
+                const now = new Date();
+                const timeString = now.toUTCString().split(' ')[4];
+                const clockEl = document.getElementById('live-time');
+                if (clockEl) {
+                    clockEl.textContent = timeString;
+                }
+            }
+            setInterval(updateLiveClock, 1000);
+            updateLiveClock();
+        </script>
     </body>
 </html>

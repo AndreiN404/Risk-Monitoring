@@ -4,20 +4,26 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
 
-# Global scheduler instance
+
 scheduler = None
+_app = None
 
 def fetch_news_task():
     """
     Background task to fetch news from multiple RSS feeds every 5 minutes
     Runs independently of HTTP requests
     """
+    global _app
+    
+    if _app is None:
+        logging.error("App instance not available for scheduled task")
+        return
+    
     try:
         from services.news_service import fetch_news_from_sources, save_articles_to_db
         from models.database import db
-        from flask import current_app
         
-        with current_app.app_context():
+        with _app.app_context():
             logging.info("Starting scheduled news fetch from RSS feeds...")
             articles = fetch_news_from_sources()
             
@@ -37,7 +43,10 @@ def init_scheduler(app):
     Args:
         app: Flask application instance
     """
-    global scheduler
+    global scheduler, _app
+    
+    # Store app instance for use in background tasks
+    _app = app
     
     if scheduler is not None:
         logging.warning("Scheduler already initialized")
@@ -48,10 +57,10 @@ def init_scheduler(app):
     
     # Add news fetching job - runs every 5 minutes
     scheduler.add_job(
-        func=lambda: fetch_news_task(),
+        func=fetch_news_task,
         trigger=IntervalTrigger(minutes=5),
         id='fetch_news_job',
-        name='Fetch news from Finviz every 5 minutes',
+        name='Fetch news from RSS feeds every 5 minutes',
         replace_existing=True
     )
     
@@ -67,7 +76,11 @@ def init_scheduler(app):
     with app.app_context():
         try:
             logging.info("Running initial news fetch on startup...")
-            fetch_news_task()
+            from services.news_service import fetch_news_from_sources, save_articles_to_db
+            articles = fetch_news_from_sources()
+            if articles:
+                saved_count, skipped_count = save_articles_to_db(articles)
+                logging.info(f"Initial fetch: Retrieved {len(articles)} articles, saved {saved_count} new ones")
         except Exception as e:
             logging.error(f"Error in initial news fetch: {e}")
     
@@ -79,8 +92,9 @@ def get_scheduler():
 
 def shutdown_scheduler():
     """Shutdown the scheduler"""
-    global scheduler
+    global scheduler, _app
     if scheduler is not None:
         scheduler.shutdown()
         scheduler = None
+        _app = None
         logging.info("Background scheduler stopped")
