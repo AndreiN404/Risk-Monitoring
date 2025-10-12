@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Risk Engine{% endblock %}
+{% block title %}Dashboard - Risk Monitoring{% endblock %}
 
 {% block content %}
 <div class="container mx-auto p-6 max-w-screen-2xl">
@@ -14,329 +14,70 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-
-    {% if not dashboard_data %}
-    <div class="alert alert-warning shadow-lg">
-        <span>No portfolio data available. <a href="{{ url_for('portfolio.portfolio_manager') }}" class="btn btn-sm btn-primary ml-2">Add Assets</a></span>
-    </div>
-    {% elif not portfolio %}
-    <div class="hero min-h-[60vh] bg-base-200 rounded-box">
-        <div class="hero-content text-center">
-            <div class="max-w-md">
-                <h1 class="text-5xl font-bold">Welcome!</h1>
-                <p class="py-6">Create your first portfolio to see comprehensive risk analytics and performance metrics.</p>
-                <a href="{{ url_for('portfolio.portfolio_manager') }}" class="btn btn-primary">Create Portfolio</a>
+    
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+            <div class="text-4xl">📊</div>
+            <div>
+                <h1 class="text-3xl font-bold">Dashboard</h1>
+                <p class="text-base-content/60">Portfolio overview and risk analytics</p>
             </div>
         </div>
+        <div class="flex gap-2">
+            <button onclick="window.location.href='/?force_refresh=1'" class="btn btn-sm btn-outline">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                Refresh
+            </button>
+            <a href="{{ url_for('settings.plugins') }}" class="btn btn-sm btn-ghost">
+                ⚙️ Plugins
+            </a>
+        </div>
     </div>
+    
+    <!-- Dashboard Widgets -->
+    {% if widgets %}
+        {% for widget in widgets %}
+        <div class="widget-container mb-6 fade-in" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+            {{ widget.instance.render(render_params)|safe }}
+        </div>
+        {% endfor %}
     {% else %}
-
-    <!-- ========== PORTFOLIO OVERVIEW ========== -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <!-- P&L Card -->
-        <div class="stats shadow bg-base-100">
-            <div class="stat p-6">
-                <div class="stat-title text-sm">Portfolio P&L</div>
-                <div class="stat-value text-3xl {{ 'text-success' if dashboard_data.total_pnl > 0 else 'text-error' if dashboard_data.total_pnl < 0 else '' }}">
-                    {{ "+" if dashboard_data.total_pnl > 0 else "" }}${{ "%.0f"|format(dashboard_data.total_pnl) }}
-                </div>
-                <div class="stat-desc text-sm">
-                </div>
-                <div class="stat-desc text-sm">
-                    {{ "+" if dashboard_data.pnl_percentage > 0 else "" }}{{ "%.2f"|format(dashboard_data.pnl_percentage) }}%
+        <!-- Empty State -->
+        <div class="hero min-h-[60vh] bg-base-200 rounded-box">
+            <div class="hero-content text-center">
+                <div class="max-w-md">
+                    <div class="text-6xl mb-4">📊</div>
+                    <h1 class="text-4xl font-bold mb-4">No Dashboard Widgets</h1>
+                    <p class="text-lg mb-6">Enable the Dashboard Overview widget in the Plugin Manager to see your portfolio analytics.</p>
+                    <a href="{{ url_for('settings.plugins') }}" class="btn btn-primary btn-lg">
+                        Go to Plugin Manager
+                    </a>
                 </div>
             </div>
         </div>
-
-        <!-- Value Card -->
-        <div class="stats shadow bg-base-100">
-            <div class="stat p-6">
-                <div class="stat-title text-sm">Total Value</div>
-                <div class="stat-value text-3xl">${{ "%.0f"|format(dashboard_data.total_value) }}</div>
-                <div class="stat-desc text-sm">Cost: ${{ "%.0f"|format(dashboard_data.total_cost) }}</div>
-            </div>
-        </div>
-
-        <!-- Sharpe Card -->
-        <div class="stats shadow bg-base-100">
-            <div class="stat p-6">
-                <div class="stat-title text-sm">Sharpe Ratio</div>
-                <div class="stat-value text-3xl">{{ "%.2f"|format(dashboard_data.sharpe_ratio) if dashboard_data.sharpe_ratio else "N/A" }}</div>
-                <div class="stat-desc text-sm">Risk-adjusted</div>
-            </div>
-        </div>
-
-        <!-- Volatility Card -->
-        <div class="stats shadow bg-base-100">
-            <div class="stat p-6">
-                <div class="stat-title text-sm">Volatility</div>
-                <div class="stat-value text-3xl">{{ "%.1f"|format(dashboard_data.volatility * 100) }}%</div>
-                <div class="stat-desc text-sm">Annualized</div>
-            </div>
-        </div>
-
-        <!-- VaR Card -->
-        <div class="stats shadow bg-base-100">
-            <div class="stat p-6">
-                <div class="stat-title text-sm">VaR (95%)</div>
-                <div class="stat-value text-3xl text-warning">{{ "%.1f"|format(dashboard_data.var_95 * 100) }}%</div>
-                <div class="stat-desc text-sm">Daily at risk</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- ========== MARKET INDICES CHARTS ========== -->
-    <div class="card bg-base-100 shadow-xl mt-6 mb-6">
-        <div class="card-body p-4">
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-primary">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                    </svg>
-                    <h2 class="text-lg font-bold">Market Indices</h2>
-                    <div class="badge badge-sm badge-info">5D Hourly</div>
-                </div>
-                <button onclick="loadIndicesCharts()" class="btn btn-sm btn-ghost">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="charts-container">
-                <!-- Charts will be dynamically loaded here -->
-            </div>
-        </div>
-    </div>
-
-    
-
-    <!-- ========== PORTFOLIO HOLDINGS ========== -->
-    {% if dashboard_data.live_prices %}
-    <div class="card bg-base-100 shadow-xl mb-6">
-        <div class="card-body">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="card-title text-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-success">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
-                    </svg>
-                    Live Prices
-                    <div class="badge badge-success badge-sm">REAL-TIME</div>
-                </h3>
-                <button onclick="window.location.reload()" class="btn btn-sm btn-outline">Refresh</button>
-            </div>
-            
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {% for asset in portfolio %}
-                <div class="stat bg-base-200 rounded-lg p-3">
-                    <div class="stat-title text-xs font-bold">{{ asset.symbol }}</div>
-                    <div class="stat-value text-lg">
-                        {% if dashboard_data.live_prices[asset.symbol] %}
-                            ${{ "%.2f"|format(dashboard_data.live_prices[asset.symbol]) }}
-                        {% else %}
-                            <span class="text-gray-400">--</span>
-                        {% endif %}
-                    </div>
-                    {% if dashboard_data.price_changes and dashboard_data.price_changes[asset.symbol] %}
-                    <div class="stat-desc text-xs {{ 'text-success' if dashboard_data.price_changes[asset.symbol] > 0 else 'text-error' }}">
-                        {{ "+" if dashboard_data.price_changes[asset.symbol] > 0 else "" }}{{ "%.2f"|format(dashboard_data.price_changes[asset.symbol]) }}%
-                    </div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
     {% endif %}
 
-    <!-- ========== RISK METRICS ========== -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Risk Metrics Table -->
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h3 class="card-title text-lg mb-4">Risk Metrics</h3>
-                <div class="overflow-x-auto">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td class="font-semibold">Portfolio Beta</td>
-                                <td class="text-right">{{ "%.3f"|format(dashboard_data.beta) }}</td>
-                            </tr>
-                            <tr>
-                                <td class="font-semibold">Annual Return</td>
-                                <td class="text-right {{ 'text-success' if dashboard_data.annual_return > 0 else 'text-error' }}">
-                                    {{ "%.2f"|format(dashboard_data.annual_return * 100) }}%
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="font-semibold">Sortino Ratio</td>
-                                <td class="text-right">{{ "%.3f"|format(dashboard_data.sortino_ratio) if dashboard_data.sortino_ratio else "N/A" }}</td>
-                            </tr>
-                            <tr>
-                                <td class="font-semibold">Calmar Ratio</td>
-                                <td class="text-right">{{ "%.3f"|format(dashboard_data.calmar_ratio) if dashboard_data.calmar_ratio else "N/A" }}</td>
-                            </tr>
-                            <tr>
-                                <td class="font-semibold">VaR (99%)</td>
-                                <td class="text-right text-error">{{ "%.2f"|format(dashboard_data.var_99 * 100) }}%</td>
-                            </tr>
-                            <tr>
-                                <td class="font-semibold">Expected Shortfall (95%)</td>
-                                <td class="text-right text-error">{{ "%.2f"|format(dashboard_data.es_95 * 100) }}%</td>
-                            </tr>
-                            <tr>
-                                <td class="font-semibold">Max Drawdown</td>
-                                <td class="text-right text-error">{{ "%.2f"|format(dashboard_data.max_drawdown * 100) }}%</td>
-                            </tr>
-                            <tr>
-                                <td class="font-semibold">Skewness</td>
-                                <td class="text-right">{{ "%.3f"|format(dashboard_data.skewness) if dashboard_data.skewness else "N/A" }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Asset Allocation -->
-        {% if dashboard_data.asset_class_breakdown %}
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h3 class="card-title text-lg mb-4">Asset Allocation</h3>
-                <div class="overflow-x-auto">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Asset Class</th>
-                                <th class="text-right">Weight</th>
-                                <th class="text-right">Assets</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for asset_class, data in dashboard_data.asset_class_breakdown.items() %}
-                            <tr>
-                                <td>
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-3 h-3 rounded-full bg-primary"></div>
-                                        {{ asset_class }}
-                                    </div>
-                                </td>
-                                <td class="text-right">
-                                    <div class="badge badge-sm">{{ "%.1f"|format(data['total_allocation']) }}%</div>
-                                </td>
-                                <td class="text-right">{{ data['count'] }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-
-    {% endif %}
 </div>
 
-<!-- Lightweight Charts Library -->
-<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-
-<script>
-let charts = {};
-
-// Load indices charts on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadIndicesCharts();
-});
-
-function loadIndicesCharts() {
-    fetch('/api/charts/indices')
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                console.error('Error loading charts:', data.error);
-                return;
-            }
-            
-            const container = document.getElementById('charts-container');
-            container.innerHTML = ''; // Clear existing charts
-            
-            // Create charts for each index in the response
-            Object.keys(data).forEach(symbol => {
-                const chartData = data[symbol];
-                const chartId = 'chart-' + symbol.replace('^', '');
-                const titleId = 'title-' + symbol.replace('^', '');
-                const descId = 'desc-' + symbol.replace('^', '');
-                
-                // Create chart container
-                const chartDiv = document.createElement('div');
-                chartDiv.className = 'border border-base-300 rounded-lg p-3 bg-base-50';
-                chartDiv.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-semibold text-sm" id="${titleId}">${chartData.info?.name || symbol}</span>
-                        <span class="text-xs opacity-60" id="${descId}">${chartData.info?.description || ''}</span>
-                    </div>
-                    <div id="${chartId}" style="height: 180px;"></div>
-                `;
-                container.appendChild(chartDiv);
-                
-                // Render the chart
-                renderChart(symbol, chartId, chartData);
-            });
-        })
-        .catch(error => console.error('Error fetching chart data:', error));
-}
-
-function renderChart(symbol, containerId, chartData) {
-    if (!chartData || !chartData.candles || chartData.candles.length === 0) {
-        document.getElementById(containerId).innerHTML = '<p class="text-center text-xs text-gray-500">No data</p>';
-        return;
+<style>
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
     }
-
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
-
-    const chart = LightweightCharts.createChart(container, {
-        width: container.offsetWidth,
-        height: 180,
-        layout: {
-            background: { color: 'transparent' },
-            textColor: '#9ca3af',
-        },
-        grid: {
-            vertLines: { color: '#2a2e39' },
-            horzLines: { color: '#2a2e39' },
-        },
-        crosshair: {
-            mode: LightweightCharts.CrosshairMode.Normal,
-        },
-        rightPriceScale: {
-            borderColor: '#4b5563',
-        },
-        timeScale: {
-            borderColor: '#4b5563',
-            timeVisible: true,
-            secondsVisible: false,
-        },
-    });
-
-    const candlestickSeries = chart.addCandlestickSeries({
-        upColor: '#10b981',
-        downColor: '#ef4444',
-        borderUpColor: '#10b981',
-        borderDownColor: '#ef4444',
-        wickUpColor: '#10b981',
-        wickDownColor: '#ef4444',
-    });
-
-    candlestickSeries.setData(chartData.candles);
-    chart.timeScale().fitContent();
-    charts[containerId] = chart;
-
-    window.addEventListener('resize', () => {
-        chart.applyOptions({ width: container.offsetWidth });
-    });
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
-</script>
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+    opacity: 0;
+}
+</style>
 
 {% endblock %}

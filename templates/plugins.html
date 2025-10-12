@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}Plugin Manager - Financial Terminal{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold mb-2">Plugin Manager</h1>
+            <p class="text-base-content/70">Manage and customize your terminal with plugins</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" onclick="window.location.href='/settings'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Settings
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="refreshPlugins()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="space-y-6">
+        
+        <!-- Data Providers -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-xl mb-4">
+                    <span class="badge badge-primary">{{ plugins.data_providers|length }}</span>
+                    Data Providers
+                </h2>
+                <p class="text-sm opacity-70 mb-4">Connect to different data sources (APIs, databases, files)</p>
+                
+                {% if plugins.data_providers %}
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Plugin</th>
+                                <th>Version</th>
+                                <th>Description</th>
+                                <th>Author</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plugin_key, metadata in plugins.data_providers.items() %}
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="badge badge-ghost">📊</div>
+                                        <span class="font-semibold">{{ metadata.name }}</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-outline">v{{ metadata.version }}</span></td>
+                                <td class="text-sm opacity-70">{{ metadata.description }}</td>
+                                <td class="text-sm">{{ metadata.author }}</td>
+                                <td>
+                                    {% if plugin_key in enabled_plugins %}
+                                    <span class="badge badge-success">Enabled</span>
+                                    {% else %}
+                                    <span class="badge badge-error">Disabled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-xs btn-outline" 
+                                                onclick="togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
+                                            {% if plugin_key in enabled_plugins %}
+                                            Disable
+                                            {% else %}
+                                            Enable
+                                            {% endif %}
+                                        </button>
+                                        <button class="btn btn-xs btn-ghost" 
+                                                onclick="reloadPlugin('{{ plugin_key }}')">
+                                            Reload
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>No data provider plugins found. Add plugins to the <code>plugins/data_providers/</code> directory.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Widgets -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-xl mb-4">
+                    <span class="badge badge-secondary">{{ plugins.widgets|length }}</span>
+                    Dashboard Widgets
+                </h2>
+                <p class="text-sm opacity-70 mb-4">Custom widgets for your dashboard</p>
+                
+                {% if plugins.widgets %}
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Plugin</th>
+                                <th>Version</th>
+                                <th>Description</th>
+                                <th>Author</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plugin_key, metadata in plugins.widgets.items() %}
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="badge badge-ghost">🎨</div>
+                                        <span class="font-semibold">{{ metadata.name }}</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-outline">v{{ metadata.version }}</span></td>
+                                <td class="text-sm opacity-70">{{ metadata.description }}</td>
+                                <td class="text-sm">{{ metadata.author }}</td>
+                                <td>
+                                    {% if plugin_key in enabled_plugins %}
+                                    <span class="badge badge-success">Enabled</span>
+                                    {% else %}
+                                    <span class="badge badge-error">Disabled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-xs btn-outline" 
+                                                onclick="togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
+                                            {% if plugin_key in enabled_plugins %}
+                                            Disable
+                                            {% else %}
+                                            Enable
+                                            {% endif %}
+                                        </button>
+                                        <button class="btn btn-xs btn-ghost" 
+                                                onclick="reloadPlugin('{{ plugin_key }}')">
+                                            Reload
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>No widget plugins found. Add plugins to the <code>plugins/widgets/</code> directory.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Analytics -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-xl mb-4">
+                    <span class="badge badge-accent">{{ plugins.analytics|length }}</span>
+                    Analytics & Indicators
+                </h2>
+                <p class="text-sm opacity-70 mb-4">Custom technical indicators and analysis tools</p>
+                
+                {% if plugins.analytics %}
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>Plugin</th>
+                                <th>Version</th>
+                                <th>Description</th>
+                                <th>Author</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plugin_key, metadata in plugins.analytics.items() %}
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="badge badge-ghost">📈</div>
+                                        <span class="font-semibold">{{ metadata.name }}</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-outline">v{{ metadata.version }}</span></td>
+                                <td class="text-sm opacity-70">{{ metadata.description }}</td>
+                                <td class="text-sm">{{ metadata.author }}</td>
+                                <td>
+                                    {% if plugin_key in enabled_plugins %}
+                                    <span class="badge badge-success">Enabled</span>
+                                    {% else %}
+                                    <span class="badge badge-error">Disabled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-xs btn-outline" 
+                                                onclick="togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
+                                            {% if plugin_key in enabled_plugins %}
+                                            Disable
+                                            {% else %}
+                                            Enable
+                                            {% endif %}
+                                        </button>
+                                        <button class="btn btn-xs btn-ghost" 
+                                                onclick="reloadPlugin('{{ plugin_key }}')">
+                                            Reload
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>No analytics plugins found. Add plugins to the <code>plugins/analytics/</code> directory.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Themes -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-xl mb-4">
+                    <span class="badge badge-info">{{ plugins.themes|length }}</span>
+                    Themes
+                </h2>
+                <p class="text-sm opacity-70 mb-4">Custom color schemes and visual styles</p>
+                
+                {% if plugins.themes %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for plugin_key, metadata in plugins.themes.items() %}
+                    {% set is_active = session.get('active_plugin_theme') == plugin_key %}
+                    <div class="card bg-base-200 shadow {% if is_active %}ring-2 ring-primary{% endif %}">
+                        <div class="card-body p-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="card-title text-sm">{{ metadata.name }}</h3>
+                                {% if is_active %}
+                                <span class="badge badge-primary badge-sm">Active</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-xs opacity-70">{{ metadata.description }}</p>
+                            <div class="card-actions justify-end mt-2">
+                                <button class="btn btn-xs btn-primary" onclick="applyTheme('{{ plugin_key }}')" {% if is_active %}disabled{% endif %}>
+                                    {% if is_active %}Applied{% else %}Apply{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>No theme plugins found. Add plugins to the <code>plugins/themes/</code> directory.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Developer Info -->
+        <div class="card bg-base-100 shadow-xl border-2 border-primary/20">
+            <div class="card-body">
+                <h2 class="card-title text-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    Create Your Own Plugin
+                </h2>
+                <p class="text-sm opacity-70 mb-4">
+                    Extend the terminal with custom functionality. Create data providers, widgets, indicators, and more.
+                </p>
+                <div class="bg-base-200 p-4 rounded-lg font-mono text-xs space-y-2">
+                    <div># Create a new data provider plugin</div>
+                    <div class="text-primary">from plugins.base import DataProviderPlugin</div>
+                    <div></div>
+                    <div class="text-secondary">class MyProvider(DataProviderPlugin):</div>
+                    <div class="ml-4">name = "My Custom Provider"</div>
+                    <div class="ml-4">supported_asset_classes = ['stocks']</div>
+                    <div class="ml-4"># Implement required methods...</div>
+                </div>
+                <div class="card-actions justify-end mt-4">
+                    <a href="https://github.com/your-repo/plugin-docs" target="_blank" class="btn btn-sm btn-outline">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        Plugin Documentation
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function togglePlugin(pluginKey, enable) {
+    fetch('/api/plugins/toggle', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            plugin_key: pluginKey,
+            enable: enable
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error toggling plugin: ' + error, 'error');
+    });
+}
+
+function reloadPlugin(pluginKey) {
+    fetch('/api/plugins/reload', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            plugin_key: pluginKey
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error reloading plugin: ' + error, 'error');
+    });
+}
+
+function refreshPlugins() {
+    location.reload();
+}
+
+function applyTheme(themeKey) {
+    fetch('/api/plugins/apply-theme', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            theme_key: themeKey
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Inject the CSS into the page
+            let styleElement = document.getElementById('plugin-theme-css');
+            if (!styleElement) {
+                styleElement = document.createElement('style');
+                styleElement.id = 'plugin-theme-css';
+                document.head.appendChild(styleElement);
+            }
+            styleElement.textContent = data.css;
+        } else {
+            showToast(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error applying theme: ' + error, 'error');
+    });
+}
+
+function showToast(message, type = 'info') {
+    // Simple toast notification
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} fixed top-4 right-4 w-auto z-50 shadow-lg`;
+    toast.innerHTML = `<span>${message}</span>`;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}
