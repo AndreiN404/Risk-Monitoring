@@ -1,0 +1,54 @@
+# ============================================================================
+# Grafana Datasources Configuration
+# Auto-provisioned on container start
+# ============================================================================
+
+apiVersion: 1
+
+datasources:
+  # ==========================================================================
+  # TimescaleDB / PostgreSQL Datasource
+  # ==========================================================================
+  - name: TimescaleDB
+    type: postgres
+    access: proxy
+    url: timescaledb:5432
+    database: risk_monitoring_db
+    user: postgres
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
+    jsonData:
+      sslmode: 'disable'
+      postgresVersion: 1400  # PostgreSQL 14
+      timescaledb: true
+    isDefault: true
+    editable: true
+
+  # ==========================================================================
+  # Redis Datasource (for cache metrics)
+  # ==========================================================================
+  - name: Redis
+    type: redis-datasource
+    access: proxy
+    url: redis:6379
+    secureJsonData:
+      password: ${REDIS_PASSWORD}
+    jsonData:
+      client: 'standalone'
+      poolSize: 5
+      timeout: 10
+      pingInterval: 0
+      pipelineWindow: 0
+    editable: true
+
+  # ==========================================================================
+  # Prometheus Datasource (for application metrics)
+  # ==========================================================================
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    jsonData:
+      httpMethod: POST
+      timeInterval: '30s'
+    editable: true

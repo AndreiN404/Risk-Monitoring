@@ -42,11 +42,17 @@ class YFinancePlugin(DataProviderPlugin):
         """
         try:
             ticker = yf.Ticker(symbol)
-            fast_info = ticker.fast_info
+            info = ticker.info
             
             # Get current price and previous close
-            current_price = fast_info.lastPrice if hasattr(fast_info, 'lastPrice') else 0
-            previous_close = fast_info.previousClose if hasattr(fast_info, 'previousClose') else 0
+            # Try multiple fields as yfinance API can vary
+            current_price = (
+                info.get('currentPrice') or 
+                info.get('regularMarketPrice') or 
+                info.get('previousClose') or 
+                0
+            )
+            previous_close = info.get('previousClose', 0)
             
             # Calculate changes
             change = current_price - previous_close if previous_close else 0
@@ -58,18 +64,26 @@ class YFinancePlugin(DataProviderPlugin):
                 'change': change,
                 'percent_change': percent_change,
                 'previous_close': previous_close,
-                'volume': getattr(fast_info, 'lastVolume', 0),
-                'provider': self.get_name()
+                'volume': info.get('volume', 0) or info.get('regularMarketVolume', 0),
+                'provider': self.get_name(),
+                'timestamp': info.get('regularMarketTime', 'N/A')
             }
             
         except Exception as e:
             logging.error(f"Error fetching quote for {symbol}: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
             return None
     
     def get_historical(self, symbol: str, period: str = "1y", 
                       interval: str = "1d") -> Optional[pd.DataFrame]:
         """
         Get historical data using yfinance
+        
+        Args:
+            symbol: Stock ticker symbol
+            period: Time period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+            interval: Data interval (1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo)
         """
         try:
             ticker = yf.Ticker(symbol)
@@ -84,6 +98,32 @@ class YFinancePlugin(DataProviderPlugin):
         except Exception as e:
             logging.error(f"Error fetching historical data for {symbol}: {e}")
             return None
+    
+    def get_historical_data(self, symbol: str, period: str = "1y", 
+                           interval: str = "1d") -> Optional[pd.DataFrame]:
+        """
+        Alias for get_historical to match expected plugin interface
+        """
+        return self.get_historical(symbol, period, interval)
+    
+    def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Optional[Dict]]:
+        """
+        Get quotes for multiple symbols at once
+        
+        Args:
+            symbols: List of ticker symbols
+            
+        Returns:
+            Dictionary mapping symbols to quote data
+        """
+        quotes = {}
+        for symbol in symbols:
+            try:
+                quotes[symbol] = self.get_quote(symbol)
+            except Exception as e:
+                logging.error(f"Failed to get quote for {symbol}: {e}")
+                quotes[symbol] = None
+        return quotes
     
     def search_symbols(self, query: str) -> List[Dict]:
         """

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, session, current_app
-from services.data_service import data_service
+from flask_login import login_required, current_user
 
 main_bp = Blueprint('main', __name__)
 
@@ -48,9 +48,10 @@ def index():
 
 @main_bp.route('/clear_cache')
 def clear_cache():
-    """Clear application cache"""
-    data_service.clear_cache()
-    return "Cache cleared successfully!"
+    """Clear application cache - Now managed per-function"""
+    # Cache is now managed at function level, not service level
+    # Each function maintains its own _cache attribute
+    return "Cache system updated to plugin-driven architecture!"
 
 @main_bp.route('/static/js/lightweight-charts.js')
 def serve_lightweight_charts():

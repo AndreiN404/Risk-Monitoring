@@ -84,6 +84,7 @@
                                     <button onclick="openSellModal('{{ asset.symbol }}', {{ asset.quantity }}, {{ asset.purchase_price if asset.purchase_price else 0 }})" class="btn btn-xs btn-warning">Sell</button>
                                     {% endif %}
                                     <form method="POST" action="{{ url_for('portfolio.remove_asset') }}" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <input type="hidden" name="symbol" value="{{ asset.symbol }}">
                                         <button type="submit" class="btn btn-xs btn-error" onclick="return confirm('Are you sure you want to remove {{ asset.symbol }}? This will delete all transaction history.')">Remove</button>
                                     </form>
@@ -117,6 +118,7 @@
             </div>
             <div class="flex justify-end mt-4">
                 <form method="POST" action="{{ url_for('portfolio.rebalance_portfolio') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-sm btn-outline">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -134,6 +136,7 @@
         <div class="card-body">
             <h3 class="card-title">Add Asset to Portfolio</h3>
             <form method="POST" action="{{ url_for('portfolio.add_asset') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="form-control">
                         <label class="label">
@@ -239,6 +242,7 @@
             <h3 class="card-title">Quick Start - Preset Portfolios</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <form method="POST" action="{{ url_for('portfolio.load_preset') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="preset" value="conservative">
                     <div class="card bg-base-200">
                         <div class="card-body">
@@ -250,6 +254,7 @@
                 </form>
                 
                 <form method="POST" action="{{ url_for('portfolio.load_preset') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="preset" value="balanced">
                     <div class="card bg-base-200">
                         <div class="card-body">
@@ -261,6 +266,7 @@
                 </form>
                 
                 <form method="POST" action="{{ url_for('portfolio.load_preset') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="preset" value="aggressive">
                     <div class="card bg-base-200">
                         <div class="card-body">
@@ -280,6 +286,7 @@
     <div class="modal-box">
         <h3 class="font-bold text-lg">Sell Asset</h3>
         <form method="POST" action="{{ url_for('portfolio.sell_asset') }}" id="sell_form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="py-4">
                 <div class="form-control">
                     <label class="label">

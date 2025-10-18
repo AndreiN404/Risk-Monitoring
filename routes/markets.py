@@ -1,7 +1,15 @@
 """Markets route - Plugin Widget Showcase"""
 from flask import Blueprint, render_template, current_app
+from flask_login import login_required
 
 markets_bp = Blueprint('markets', __name__)
+
+# Protect all routes in this blueprint
+@markets_bp.before_request
+@login_required
+def require_login():
+    """Require authentication for all markets routes"""
+    pass
 
 @markets_bp.route('/markets')
 def markets():

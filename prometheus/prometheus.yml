@@ -1,0 +1,55 @@
+# ============================================================================
+# Prometheus Configuration
+# ============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'risk-monitoring-platform'
+
+# Scrape configs
+scrape_configs:
+  # ==========================================================================
+  # Prometheus itself
+  # ==========================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ==========================================================================
+  # Flask Application Metrics
+  # ==========================================================================
+  - job_name: 'flask-app'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['flask-app:5000']
+    metrics_path: '/metrics'
+    
+  # ==========================================================================
+  # PostgreSQL Exporter (if installed)
+  # ==========================================================================
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+
+  # ==========================================================================
+  # Redis Exporter (if installed)
+  # ==========================================================================
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+  # ==========================================================================
+  # Node Exporter (if installed)
+  # ==========================================================================
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+
+  # ==========================================================================
+  # Nginx Exporter (if installed)
+  # ==========================================================================
+  # - job_name: 'nginx'
+  #   static_configs:
+  #     - targets: ['nginx-exporter:9113']

@@ -1,6 +1,5 @@
 from models import db, Portfolio, PortfolioAsset, Transaction
 from datetime import datetime
-from services.data_service import data_service
 
 class PortfolioService:
     """Service for portfolio management operations"""
@@ -418,9 +417,12 @@ class PortfolioService:
 portfolio_service = PortfolioService()
 
 def get_live_prices_for_portfolio():
-    """Get live prices for all portfolio assets - optimized for async loading"""
+    """Get live prices for all portfolio assets - optimized for async loading
+    
+    Plugin-driven: Uses data provider plugins instead of direct data_service
+    """
     import datetime
-    from services.data_service import data_service
+    from flask import current_app
     
     portfolio = Portfolio.query.first()
     if not portfolio:
@@ -438,17 +440,27 @@ def get_live_prices_for_portfolio():
     cache_key = f"live_prices_{'-'.join(sorted(symbols))}"
     
     # Check cache first (5 minute expiry for live prices)
-    if hasattr(data_service, '_data_cache') and cache_key in data_service._data_cache:
-        cached_data, cached_time = data_service._data_cache[cache_key]
+    if not hasattr(get_live_prices_for_portfolio, '_cache'):
+        get_live_prices_for_portfolio._cache = {}
+    
+    if cache_key in get_live_prices_for_portfolio._cache:
+        cached_data, cached_time = get_live_prices_for_portfolio._cache[cache_key]
         if (datetime.datetime.now() - cached_time).seconds < 300:  # 5 minutes
             return cached_data
     
     try:
+        pm = current_app.plugin_manager
+        data_plugin = pm.get_enabled_plugin('data_providers', 'yfinance_provider')
+        
+        if not data_plugin:
+            print("No data provider plugin available")
+            return {'prices': {}, 'changes': {}, 'update_time': None}
+        
         # Fetch all prices in batch if possible
         for asset in assets:
             try:
-                current_data = data_service.fetch_stock_data([asset.symbol], period="5d")
-                if not current_data.empty and 'Close' in current_data.columns:
+                current_data = data_plugin.get_historical_data(asset.symbol, period="5d")
+                if current_data is not None and not current_data.empty and 'Close' in current_data.columns:
                     if hasattr(current_data['Close'], 'columns') and asset.symbol in current_data['Close'].columns:
                         prices = current_data['Close'][asset.symbol]
                     else:
@@ -482,8 +494,7 @@ def get_live_prices_for_portfolio():
         }
         
         # Cache the result
-        if hasattr(data_service, '_data_cache'):
-            data_service._data_cache[cache_key] = (result, datetime.datetime.now())
+        get_live_prices_for_portfolio._cache[cache_key] = (result, datetime.datetime.now())
         
         return result
         
@@ -492,9 +503,13 @@ def get_live_prices_for_portfolio():
         return {'prices': {}, 'changes': {}, 'update_time': None, 'error': str(e)}
 
 def calculate_correlation_matrix():
-    """Calculate correlation matrix - optimized for async loading"""
-    from services.data_service import data_service
+    """Calculate correlation matrix - optimized for async loading
+    
+    Plugin-driven: Uses data provider plugins
+    """
+    from flask import current_app
     import datetime
+    import pandas as pd
     
     portfolio = Portfolio.query.first()
     if not portfolio:
@@ -509,29 +524,43 @@ def calculate_correlation_matrix():
     cache_key = f"correlation_{'-'.join(sorted(symbols))}"
     
     # Check cache (1 hour expiry for correlation matrix)
-    if hasattr(data_service, '_data_cache') and cache_key in data_service._data_cache:
-        cached_data, cached_time = data_service._data_cache[cache_key]
+    if not hasattr(calculate_correlation_matrix, '_cache'):
+        calculate_correlation_matrix._cache = {}
+    
+    if cache_key in calculate_correlation_matrix._cache:
+        cached_data, cached_time = calculate_correlation_matrix._cache[cache_key]
         if (datetime.datetime.now() - cached_time).seconds < 3600:  # 1 hour
             return cached_data
     
     try:
+        pm = current_app.plugin_manager
+        data_plugin = pm.get_enabled_plugin('data_providers', 'yfinance_provider')
+        
+        if not data_plugin:
+            print("No data provider plugin available")
+            return None
+        
         # Fetch data for correlation calculation (use 1mo for faster loading)
-        portfolio_data = data_service.fetch_stock_data(symbols, period="1mo")
-        if not portfolio_data.empty and 'Close' in portfolio_data.columns:
+        portfolio_data_dict = {}
+        for symbol in symbols:
+            data = data_plugin.get_historical_data(symbol, period="1mo")
+            if data is not None and not data.empty and 'Close' in data.columns:
+                portfolio_data_dict[symbol] = data['Close']
+        
+        if len(portfolio_data_dict) >= 2:
+            # Combine into DataFrame
+            portfolio_data = pd.DataFrame(portfolio_data_dict)
+            
             # Calculate returns for correlation
-            if hasattr(portfolio_data['Close'], 'columns'):
-                returns_data = portfolio_data['Close'].pct_change().dropna()
-                correlation_matrix = returns_data.corr()
-                # Convert to HTML table
-                matrix_html = correlation_matrix.to_html(classes='table table-sm', float_format='%.2f')
-                
-                # Cache the result
-                if hasattr(data_service, '_data_cache'):
-                    data_service._data_cache[cache_key] = (matrix_html, datetime.datetime.now())
-                
-                return matrix_html
-            else:
-                return None
+            returns_data = portfolio_data.pct_change().dropna()
+            correlation_matrix = returns_data.corr()
+            # Convert to HTML table
+            matrix_html = correlation_matrix.to_html(classes='table table-sm', float_format='%.2f')
+            
+            # Cache the result
+            calculate_correlation_matrix._cache[cache_key] = (matrix_html, datetime.datetime.now())
+            
+            return matrix_html
         else:
             return None
     except Exception as e:
@@ -604,21 +633,26 @@ def get_portfolio_data():
 
 def fetch_live_prices(symbols, force_refresh=False):
     """
-    Fetch current/latest prices for given symbols using Alpha Vantage and yfinance
+    Fetch current/latest prices for given symbols using data provider plugins
     Uses 5-minute caching to avoid unnecessary API calls unless force_refresh is True
-    """
-    import yfinance as yf
-    import time
-    from alpha_vantage.timeseries import TimeSeries
-    from datetime import datetime
     
-    # Use the data service cache
+    Plugin-driven architecture: Uses yfinance_provider or alpha_vantage_provider
+    """
+    from flask import current_app
+    from datetime import datetime
+    import time
+    
+    # Simple in-memory cache
+    if not hasattr(fetch_live_prices, '_cache'):
+        fetch_live_prices._cache = {}
+    
     cache_key = f"live_prices_{'-'.join(sorted(symbols))}"
+    cache_timeout = 300  # 5 minutes
     
     # Check cache first (unless force refresh is requested)
-    if not force_refresh and hasattr(data_service, '_data_cache'):
-        cached_data, cached_time = data_service._data_cache.get(cache_key, (None, None))
-        if cached_data and (datetime.now() - cached_time).seconds < data_service.cache_timeout:
+    if not force_refresh and cache_key in fetch_live_prices._cache:
+        cached_data, cached_time = fetch_live_prices._cache[cache_key]
+        if (datetime.now() - cached_time).seconds < cache_timeout:
             print(f"Using cached live prices for {symbols} (fetched {(datetime.now() - cached_time).seconds}s ago)")
             return cached_data
     
@@ -628,65 +662,63 @@ def fetch_live_prices(symbols, force_refresh=False):
         print(f"Fetching fresh live prices for {symbols}")
     
     live_prices = {}
-    ts = TimeSeries(key=data_service.alpha_vantage_api_key, output_format='pandas')
+    pm = current_app.plugin_manager
     
-    for symbol in symbols:
+    # Try Alpha Vantage plugin first (if available and has API key)
+    av_plugin = pm.get_enabled_plugin('data_providers', 'alpha_vantage_provider')
+    if av_plugin and hasattr(av_plugin, 'api_key') and av_plugin.api_key:
+        print("Trying Alpha Vantage plugin for live prices...")
         try:
-            # For free Alpha Vantage tier, use daily data as intraday is premium only
-            try:
-                data, _ = ts.get_daily(symbol=symbol, outputsize='compact')
-                if not data.empty:
-                    # Get the most recent close price from daily data
-                    latest_price = data['4. close'].iloc[0]  # Most recent daily close
-                    live_prices[symbol] = float(latest_price)
-                    print(f"Alpha Vantage daily price for {symbol}: ${latest_price:.2f}")
+            quotes = av_plugin.get_quotes_batch(symbols)
+            for symbol, quote in quotes.items():
+                if quote and 'price' in quote:
+                    live_prices[symbol] = float(quote['price'])
+                    print(f"Alpha Vantage price for {symbol}: ${quote['price']:.2f}")
                 else:
-                    raise Exception("No daily data from Alpha Vantage")
-            except Exception as av_error:
-                error_msg = str(av_error).lower()
-                print(f"Alpha Vantage failed for {symbol}: {av_error}")
-                
-                # Check for specific daily rate limit message
-                if 'our standard api rate limit is 25 requests per day' in error_msg:
-                    print(f"Alpha Vantage daily rate limit (25 requests/day) exceeded for {symbol}. Switching to yfinance.")
-                elif 'rate limit' in error_msg:
-                    print(f"Alpha Vantage rate limit exceeded for {symbol}. Falling back to yfinance.")
-                
-                raise Exception("Alpha Vantage failed")
+                    live_prices[symbol] = None
             
-            # Add small delay to respect rate limits
-            time.sleep(0.2)
-            
-        except Exception as e:
-            print(f"Trying yfinance for {symbol} live price")
-            try:
-                # Use yfinance for more recent/intraday data
-                ticker_data = yf.Ticker(symbol)
-                
-                # Try to get 1-day 1-minute data for most recent price
-                hist = ticker_data.history(period="1d", interval="1m")
-                if not hist.empty:
-                    latest_price = float(hist['Close'].iloc[-1])
-                    live_prices[symbol] = latest_price
-                    print(f"yfinance live price for {symbol}: ${latest_price:.2f}")
+            # If we got all prices, cache and return
+            if all(price is not None for price in live_prices.values()):
+                fetch_live_prices._cache[cache_key] = (live_prices, datetime.now())
+                return live_prices
+        except Exception as av_error:
+            print(f"Alpha Vantage plugin failed: {av_error}")
+    
+    # Fallback to yfinance plugin (more reliable for free tier)
+    yf_plugin = pm.get_enabled_plugin('data_providers', 'yfinance_provider')
+    if yf_plugin:
+        print("Using yfinance plugin for live prices...")
+        try:
+            quotes = yf_plugin.get_quotes_batch(symbols)
+            for symbol, quote in quotes.items():
+                if quote and 'price' in quote:
+                    live_prices[symbol] = float(quote['price'])
+                    print(f"yfinance price for {symbol}: ${quote['price']:.2f}")
                 else:
-                    # Fallback to recent daily data
-                    hist_daily = ticker_data.history(period="2d")
-                    if not hist_daily.empty:
-                        latest_price = float(hist_daily['Close'].iloc[-1])
-                        live_prices[symbol] = latest_price
-                        print(f"yfinance daily price for {symbol}: ${latest_price:.2f}")
-                    else:
-                        print(f"No price data available for {symbol}")
+                    # Try to get historical data as fallback
+                    try:
+                        hist = yf_plugin.get_historical_data(symbol, period="1d", interval="1m")
+                        if hist is not None and not hist.empty:
+                            latest_price = float(hist['Close'].iloc[-1])
+                            live_prices[symbol] = latest_price
+                            print(f"yfinance historical price for {symbol}: ${latest_price:.2f}")
+                        else:
+                            live_prices[symbol] = None
+                    except:
                         live_prices[symbol] = None
-                        
-            except Exception as e2:
-                print(f"Failed to get live price for {symbol}: {e2}")
-                live_prices[symbol] = None
+        except Exception as yf_error:
+            print(f"yfinance plugin failed: {yf_error}")
+            # Set remaining symbols to None
+            for symbol in symbols:
+                if symbol not in live_prices:
+                    live_prices[symbol] = None
+    else:
+        print("ERROR: No data provider plugins available!")
+        for symbol in symbols:
+            live_prices[symbol] = None
     
     # Cache the live prices with current timestamp
-    if hasattr(data_service, '_data_cache'):
-        data_service._data_cache[cache_key] = (live_prices, datetime.now())
+    fetch_live_prices._cache[cache_key] = (live_prices, datetime.now())
     
     return live_prices
 
@@ -796,8 +828,11 @@ def calculate_portfolio_dashboard_data(force_refresh=False, lightweight=False):
             def _load_cached_metrics(self):
                 """Load cached metrics from previous calculation"""
                 cache_key = "dashboard_metrics_cache"
-                if hasattr(data_service, '_data_cache') and cache_key in data_service._data_cache:
-                    cached_metrics, cached_time = data_service._data_cache[cache_key]
+                if not hasattr(self._load_cached_metrics, '_cache'):
+                    self._load_cached_metrics._cache = {}
+                
+                if cache_key in self._load_cached_metrics._cache:
+                    cached_metrics, cached_time = self._load_cached_metrics._cache[cache_key]
                     # Use cache if less than 1 hour old
                     if (datetime.datetime.now() - cached_time).seconds < 3600:
                         for key, value in cached_metrics.items():
@@ -807,9 +842,18 @@ def calculate_portfolio_dashboard_data(force_refresh=False, lightweight=False):
                 return False
             
             def _calculate_portfolio_metrics(self, assets_list):
-                """Calculate portfolio-level risk metrics"""
+                """Calculate portfolio-level risk metrics - Plugin-driven"""
                 try:
+                    from flask import current_app
+                    
                     if not assets_list or len(assets_list) == 0:
+                        return
+                    
+                    pm = current_app.plugin_manager
+                    data_plugin = pm.get_enabled_plugin('data_providers', 'yfinance_provider')
+                    
+                    if not data_plugin:
+                        print("No data provider plugin available")
                         return
                     
                     # Calculate weighted metrics from cached data when possible
@@ -819,8 +863,8 @@ def calculate_portfolio_dashboard_data(force_refresh=False, lightweight=False):
                     for asset in assets_list:
                         try:
                             # Use shorter period for faster loading (1mo instead of 3mo)
-                            asset_data = data_service.fetch_stock_data([asset.symbol], period="1mo")
-                            if not asset_data.empty and 'Close' in asset_data.columns:
+                            asset_data = data_plugin.get_historical_data(asset.symbol, period="1mo")
+                            if asset_data is not None and not asset_data.empty and 'Close' in asset_data.columns:
                                 if hasattr(asset_data['Close'], 'columns') and asset.symbol in asset_data['Close'].columns:
                                     prices = asset_data['Close'][asset.symbol]
                                 else:
@@ -880,8 +924,9 @@ def calculate_portfolio_dashboard_data(force_refresh=False, lightweight=False):
                         'skewness': self.skewness,
                         'daily_pnl': self.daily_pnl
                     }
-                    if hasattr(data_service, '_data_cache'):
-                        data_service._data_cache["dashboard_metrics_cache"] = (metrics_to_cache, datetime.datetime.now())
+                    if not hasattr(self._calculate_portfolio_metrics, '_cache'):
+                        self._calculate_portfolio_metrics._cache = {}
+                    self._calculate_portfolio_metrics._cache["dashboard_metrics_cache"] = (metrics_to_cache, datetime.datetime.now())
                     
                 except Exception as e:
                     print(f"Error in portfolio metrics calculation: {e}")

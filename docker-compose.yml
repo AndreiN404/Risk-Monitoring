@@ -1,0 +1,322 @@
+# ============================================================================
+# Risk Monitoring Platform - Docker Compose Configuration
+# ============================================================================
+
+services:
+  # ==========================================================================
+  # TimescaleDB - Time-series database for market data
+  # ==========================================================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    container_name: risk-timescaledb
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      # Database credentials
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-risk_monitoring_db}
+      
+      # Performance tuning for financial data
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-512MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-2GB}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
+      POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-16MB}
+      
+    volumes:
+      # Persistent data storage
+      - timescaledb_data:/var/lib/postgresql/data
+      
+      # Initialization scripts (auto-run on first start)
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+      
+      # Backups directory
+      - ./backups:/backups
+      
+    command: >
+      postgres
+      -c shared_buffers=${POSTGRES_SHARED_BUFFERS:-512MB}
+      -c effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-2GB}
+      -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
+      -c work_mem=${POSTGRES_WORK_MEM:-16MB}
+      -c maintenance_work_mem=128MB
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c wal_buffers=16MB
+      -c max_wal_size=2GB
+      -c min_wal_size=1GB
+      -c checkpoint_completion_target=0.9
+      
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      
+    networks:
+      - risk-network
+
+  # ==========================================================================
+  # Redis Stack - Caching, sessions, and real-time data
+  # ==========================================================================
+  redis:
+    image: redis/redis-stack:latest
+    container_name: risk-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"   # Redis server
+      - "8001:8001"   # RedisInsight GUI
+      
+    environment:
+      REDIS_ARGS: >-
+        --requirepass ${REDIS_PASSWORD}
+        --maxmemory ${REDIS_MAX_MEMORY:-2gb}
+        --maxmemory-policy allkeys-lru
+        --save 900 1
+        --save 300 10
+        --save 60 10000
+        --appendonly yes
+        --appendfsync everysec
+        
+    volumes:
+      - redis_data:/data
+      
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+      
+    networks:
+      - risk-network
+
+  # ==========================================================================
+  # Flask Application - Risk Monitoring Platform
+  # ==========================================================================
+  flask-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-2025-10-16}
+        
+    container_name: risk-flask
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+      
+    environment:
+      # ======================================================================
+      # Database Configuration
+      # ======================================================================
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-risk_monitoring_db}
+      SQLALCHEMY_DATABASE_URI: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-risk_monitoring_db}
+      
+      # ======================================================================
+      # Redis Configuration
+      # ======================================================================
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CACHE_TYPE: redis
+      CACHE_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CACHE_DEFAULT_TIMEOUT: 300
+      
+      # ======================================================================
+      # Flask Configuration
+      # ======================================================================
+      FLASK_APP: app.py
+      FLASK_ENV: ${FLASK_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY}
+      
+      # ======================================================================
+      # Security Configuration
+      # ======================================================================
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_HTTPONLY: "true"
+      SESSION_COOKIE_SAMESITE: "Lax"
+      WTF_CSRF_ENABLED: "true"
+      
+      # ======================================================================
+      # API Keys (Market Data Providers)
+      # ======================================================================
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-demo}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      NEWS_API_KEY: ${NEWS_API_KEY}
+      POLYGON_API_KEY: ${POLYGON_API_KEY}
+      
+      # ======================================================================
+      # Application Settings
+      # ======================================================================
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MAX_CONTENT_LENGTH: 16777216  # 16 MB
+      
+      # ======================================================================
+      # Performance Settings
+      # ======================================================================
+      CACHE_TIMEOUT: ${CACHE_TIMEOUT:-300}
+      DEFAULT_RISK_FREE_RATE: ${DEFAULT_RISK_FREE_RATE:-0.02}
+      DEFAULT_CONFIDENCE_LEVEL: ${DEFAULT_CONFIDENCE_LEVEL:-0.95}
+      
+    volumes:
+      # Persistent application data
+      - ./logs:/app/logs
+      - ./instance:/app/instance
+      - ./static/uploads:/app/static/uploads
+      - ./backups:/app/backups
+      
+      # Development mode: Uncomment to enable hot reload
+      # - .:/app
+      
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+        
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      
+    networks:
+      - risk-network
+
+  # ==========================================================================
+  # Nginx - Reverse Proxy & Load Balancer
+  # ==========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: risk-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # Port 443 commented out for development (requires admin on Windows)
+      # Uncomment for production with SSL: - "443:443"
+      
+    volumes:
+      # Nginx configuration
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      
+      # SSL certificates (for HTTPS)
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      
+      # Static files (served directly by Nginx)
+      - ./static:/usr/share/nginx/html/static:ro
+      
+      # Nginx logs
+      - nginx_logs:/var/log/nginx
+      
+    depends_on:
+      flask-app:
+        condition: service_healthy
+        
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      
+    networks:
+      - risk-network
+
+  # ==========================================================================
+  # Grafana - Monitoring Dashboard (Optional)
+  # ==========================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: risk-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      
+    environment:
+      # Admin credentials
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      
+      # Plugins
+      GF_INSTALL_PLUGINS: redis-datasource,grafana-postgresql-datasource,grafana-clock-panel
+      
+      # Server settings
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      
+    volumes:
+      # Persistent Grafana data
+      - grafana_data:/var/lib/grafana
+      
+      # Pre-configured dashboards
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      
+      # Pre-configured datasources
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      
+    depends_on:
+      - timescaledb
+      - redis
+      
+    networks:
+      - risk-network
+
+  # ==========================================================================
+  # Prometheus - Metrics Collection (Optional)
+  # ==========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: risk-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+      
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+      
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      
+    networks:
+      - risk-network
+
+# ============================================================================
+# Named Volumes - Persistent Data Storage
+# ============================================================================
+volumes:
+  # TimescaleDB data (market data, portfolios, risk metrics)
+  timescaledb_data:
+    driver: local
+    
+  # Redis data (cache, sessions)
+  redis_data:
+    driver: local
+    
+  # Grafana data (dashboards, settings)
+  grafana_data:
+    driver: local
+    
+  # Prometheus data (metrics time-series)
+  prometheus_data:
+    driver: local
+    
+  # Nginx logs
+  nginx_logs:
+    driver: local
+
+# ============================================================================
+# Networks - Isolated network for all services
+# ============================================================================
+networks:
+  risk-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

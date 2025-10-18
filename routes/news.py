@@ -1,10 +1,26 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_required
 from services.news_service import fetch_news_from_sources, save_articles_to_db
-from services.sentiment_service import get_sentiment_summary
+# Sentiment analysis is optional (requires torch/transformers)
+try:
+    from services.sentiment_service import get_sentiment_summary
+    SENTIMENT_AVAILABLE = True
+except ImportError:
+    SENTIMENT_AVAILABLE = False
+    def get_sentiment_summary(*args, **kwargs):
+        return {"error": "Sentiment analysis not available (transformers not installed)"}
+        
 from models.news import NewsArticle
 from models.database import db
 
 news_bp = Blueprint('news', __name__)
+
+# Protect all routes in this blueprint
+@news_bp.before_request
+@login_required
+def require_login():
+    """Require authentication for all news routes"""
+    pass
 
 @news_bp.route('/news', methods=['GET', 'POST'])
 def news():

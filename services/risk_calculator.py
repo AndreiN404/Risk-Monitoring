@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from services.data_service import data_service
+# data_service removed - use plugin-driven architecture instead
 
 def calculate_returns(prices):
     """Calculate returns from price series"""
@@ -317,9 +317,18 @@ class ProfessionalRiskEngine:
             
         returns = calculate_returns(prices)
         
-        # Fetch market data for beta calculation
-        market_data = data_service.fetch_market_data(self.benchmark_symbol)
-        market_returns = calculate_returns(market_data) if not market_data.empty else pd.Series()
+        # Fetch market data for beta calculation using plugin
+        try:
+            from flask import current_app
+            pm = current_app.plugin_manager
+            data_plugin = pm.get_enabled_plugin('data_providers', 'yfinance_provider')
+            if data_plugin:
+                market_data_df = data_plugin.get_historical_data(self.benchmark_symbol, period='1y')
+                market_returns = calculate_returns(market_data_df['Close']) if market_data_df is not None and not market_data_df.empty else pd.Series()
+            else:
+                market_returns = pd.Series()
+        except:
+            market_returns = pd.Series()
         
         # Basic risk metrics
         var_95 = calculate_var(returns, 0.95)

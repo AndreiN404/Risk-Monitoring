@@ -71,7 +71,7 @@
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-xs btn-outline" 
-                                                onclick="togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
+                                                onclick="return togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
                                             {% if plugin_key in enabled_plugins %}
                                             Disable
                                             {% else %}
@@ -79,7 +79,7 @@
                                             {% endif %}
                                         </button>
                                         <button class="btn btn-xs btn-ghost" 
-                                                onclick="reloadPlugin('{{ plugin_key }}')">
+                                                onclick="return reloadPlugin('{{ plugin_key }}')">
                                             Reload
                                         </button>
                                     </div>
@@ -142,7 +142,7 @@
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-xs btn-outline" 
-                                                onclick="togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
+                                                onclick="return togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
                                             {% if plugin_key in enabled_plugins %}
                                             Disable
                                             {% else %}
@@ -150,7 +150,7 @@
                                             {% endif %}
                                         </button>
                                         <button class="btn btn-xs btn-ghost" 
-                                                onclick="reloadPlugin('{{ plugin_key }}')">
+                                                onclick="return reloadPlugin('{{ plugin_key }}')">
                                             Reload
                                         </button>
                                     </div>
@@ -213,7 +213,7 @@
                                 <td>
                                     <div class="flex gap-2">
                                         <button class="btn btn-xs btn-outline" 
-                                                onclick="togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
+                                                onclick="return togglePlugin('{{ plugin_key }}', {{ 'false' if plugin_key in enabled_plugins else 'true' }})">
                                             {% if plugin_key in enabled_plugins %}
                                             Disable
                                             {% else %}
@@ -221,7 +221,7 @@
                                             {% endif %}
                                         </button>
                                         <button class="btn btn-xs btn-ghost" 
-                                                onclick="reloadPlugin('{{ plugin_key }}')">
+                                                onclick="return reloadPlugin('{{ plugin_key }}')">
                                             Reload
                                         </button>
                                     </div>
@@ -317,51 +317,120 @@
 
 <script>
 function togglePlugin(pluginKey, enable) {
-    fetch('/api/plugins/toggle', {
+    // Prevent any default behavior
+    if (event) event.preventDefault();
+    
+    console.log('Toggle plugin called:', pluginKey, enable);
+    console.log('Sending request to:', '/settings/api/plugins/toggle');
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    
+    fetch('/settings/api/plugins/toggle', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
         },
         body: JSON.stringify({
             plugin_key: pluginKey,
             enable: enable
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        // Check for authentication error
+        if (response.status === 401) {
+            window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+            return null;
+        }
+        
+        // Check if we got redirected to login (HTML response)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            // Session expired, redirect to login
+            window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+            return null;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
     .then(data => {
+        if (!data) return; // Redirecting to login
+        
         if (data.success) {
             showToast(data.message, 'success');
             setTimeout(() => location.reload(), 1000);
         } else {
-            showToast(data.error, 'error');
+            showToast(data.error || 'An error occurred', 'error');
         }
     })
     .catch(error => {
-        showToast('Error toggling plugin: ' + error, 'error');
+        console.error('Plugin toggle error:', error);
+        showToast('Error toggling plugin: ' + error.message, 'error');
     });
+    
+    return false; // Prevent any navigation
 }
 
 function reloadPlugin(pluginKey) {
-    fetch('/api/plugins/reload', {
+    // Prevent any default behavior
+    if (event) event.preventDefault();
+    
+    showToast('Reloading plugin ' + pluginKey + '...', 'info');
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    
+    fetch('/settings/api/plugins/reload', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
         },
         body: JSON.stringify({
             plugin_key: pluginKey
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        // Check for authentication error
+        if (response.status === 401) {
+            window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+            return null;
+        }
+        
+        // Check if we got redirected to login (HTML response)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            // Session expired, redirect to login
+            window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+            return null;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
     .then(data => {
+        if (!data) return; // Redirecting to login
+        
         if (data.success) {
-            showToast(data.message, 'success');
+            showToast(data.message + ' - Changes will take effect immediately!', 'success');
         } else {
-            showToast(data.error, 'error');
+            showToast(data.error || 'An error occurred', 'error');
         }
     })
     .catch(error => {
-        showToast('Error reloading plugin: ' + error, 'error');
+        console.error('Plugin reload error:', error);
+        showToast('Error reloading plugin: ' + error.message, 'error');
     });
+    
+    return false; // Prevent any navigation
 }
 
 function refreshPlugins() {
@@ -369,17 +438,35 @@ function refreshPlugins() {
 }
 
 function applyTheme(themeKey) {
-    fetch('/api/plugins/apply-theme', {
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    
+    fetch('/settings/api/plugins/apply-theme', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
         },
         body: JSON.stringify({
             theme_key: themeKey
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        // Check for authentication error
+        if (response.status === 401) {
+            window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+            return null;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
     .then(data => {
+        if (!data) return; // Redirecting to login
+        
         if (data.success) {
             showToast(data.message, 'success');
             // Inject the CSS into the page
@@ -391,11 +478,12 @@ function applyTheme(themeKey) {
             }
             styleElement.textContent = data.css;
         } else {
-            showToast(data.error, 'error');
+            showToast(data.error || 'An error occurred', 'error');
         }
     })
     .catch(error => {
-        showToast('Error applying theme: ' + error, 'error');
+        console.error('Theme apply error:', error);
+        showToast('Error applying theme: ' + error.message, 'error');
     });
 }
 

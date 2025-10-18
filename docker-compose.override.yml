@@ -1,0 +1,53 @@
+# ============================================================================
+# Docker Compose Override for Development
+# ============================================================================
+# This file automatically extends docker-compose.yml in development
+# Enables hot-reload for faster development without rebuilding
+#
+# Usage:
+#   docker-compose up -d    (automatically uses this override)
+# ============================================================================
+
+services:
+  # ==========================================================================
+  # Flask Application - Development Configuration
+  # ==========================================================================
+  flask-app:
+    # Mount source code as volume for hot-reload
+    volumes:
+      # Application code (live updates)
+      - ./:/app
+      
+      # Exclude Python cache
+      - /app/__pycache__
+      - /app/env
+      - /app/venv
+      
+      # Keep persistent data
+      - ./logs:/app/logs
+      - ./instance:/app/instance
+      - ./static/uploads:/app/static/uploads
+      - ./backups:/app/backups
+    
+    # Enable Flask debug mode
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONUNBUFFERED=1
+    
+    # Use Flask development server instead of Gunicorn (optional)
+    # Uncomment to enable auto-reload on code changes:
+    # command: python -m flask run --host=0.0.0.0 --port=5000 --reload
+    
+    # Or keep Gunicorn with auto-reload:
+    command: >
+      gunicorn
+      --bind 0.0.0.0:5000
+      --workers 2
+      --worker-class gevent
+      --timeout 120
+      --reload
+      --log-level debug
+      --access-logfile -
+      --error-logfile -
+      app:app

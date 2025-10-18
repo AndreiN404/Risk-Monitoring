@@ -115,6 +115,33 @@ class PluginManager:
         
         return self.plugins.get(plugin_type, {}).get(plugin_name)
     
+    def get_enabled_plugin(self, plugin_type: str, preferred: str = None):
+        """
+        Get first enabled plugin of specified type
+        If preferred plugin is specified and enabled, return it
+        Otherwise return first enabled plugin of that type
+        
+        Args:
+            plugin_type: Type of plugin (data_providers, analytics, etc.)
+            preferred: Preferred plugin name (optional)
+            
+        Returns:
+            Plugin instance or None if no enabled plugin found
+        """
+        # Try preferred plugin first
+        if preferred and preferred in self.plugins.get(plugin_type, {}):
+            plugin_key = f"{plugin_type}.{preferred}"
+            if plugin_key in self.enabled_plugins:
+                return self.plugins[plugin_type][preferred]
+        
+        # Return first enabled plugin of this type
+        for name, instance in self.plugins.get(plugin_type, {}).items():
+            plugin_key = f"{plugin_type}.{name}"
+            if plugin_key in self.enabled_plugins:
+                return instance
+        
+        return None
+    
     def list_plugins(self, plugin_type: Optional[str] = None) -> Dict:
         """
         List all available plugins, optionally filtered by type

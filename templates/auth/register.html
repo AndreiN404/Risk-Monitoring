@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Risk Monitoring{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-primary mb-2">Risk Monitoring</h1>
+            <p class="text-base-content/70">Create Your Account</p>
+        </div>
+
+        <div class="card bg-base-200 shadow-2xl border border-primary/20">
+            <div class="card-body">
+                <h2 class="card-title text-2xl mb-6 justify-center">Sign Up</h2>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'error' if category == 'error' else 'info' if category == 'info' else 'success' if category == 'success' else 'warning' }} mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>{{ message }}</span>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text font-semibold">Username</span>
+                        </label>
+                        <input type="text" name="username" placeholder="Choose a username" 
+                               class="input input-bordered input-primary w-full bg-base-300" 
+                               pattern="[a-zA-Z0-9_-]+"
+                               title="Username can only contain letters, numbers, hyphens, and underscores"
+                               minlength="3" maxlength="80"
+                               required autofocus>
+                        <label class="label">
+                            <span class="label-text-alt text-base-content/60">3-80 characters, letters, numbers, -, _</span>
+                        </label>
+                    </div>
+
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text font-semibold">Email</span>
+                        </label>
+                        <input type="email" name="email" placeholder="your.email@example.com" 
+                               class="input input-bordered input-primary w-full bg-base-300" 
+                               required>
+                    </div>
+
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text font-semibold">Password</span>
+                        </label>
+                        <input type="password" name="password" placeholder="Create a strong password" 
+                               class="input input-bordered input-primary w-full bg-base-300" 
+                               minlength="12"
+                               required>
+                        <label class="label">
+                            <span class="label-text-alt text-base-content/60">
+                                Min 12 characters, must include uppercase, lowercase, number, special char
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="form-control mb-6">
+                        <label class="label">
+                            <span class="label-text font-semibold">Confirm Password</span>
+                        </label>
+                        <input type="password" name="confirm_password" placeholder="Re-enter your password" 
+                               class="input input-bordered input-primary w-full bg-base-300" 
+                               required>
+                    </div>
+
+                    <div class="alert alert-info mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-xs">Your account will be created with standard user privileges.</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full text-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        Create Account
+                    </button>
+                </form>
+
+                <div class="divider text-sm text-base-content/50">OR</div>
+
+                <div class="text-center">
+                    <p class="text-sm text-base-content/70">
+                        Already have an account?
+                        <a href="{{ url_for('auth.login') }}" class="link link-primary font-semibold">
+                            Sign In
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-6 text-xs text-base-content/50">
+            <p>By creating an account, you agree to our security policies</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

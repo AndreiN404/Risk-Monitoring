@@ -1,8 +1,14 @@
 """API routes for async data loading"""
 from flask import Blueprint, jsonify, request
-from services.portfolio_service import get_portfolio_data, calculate_portfolio_dashboard_data
+from flask_login import login_required, current_user
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+@api_bp.before_request
+def require_login():
+    """Require authentication for all API routes"""
+    if not current_user.is_authenticated:
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
 
 @api_bp.route('/dashboard/metrics')
 def get_dashboard_metrics():
@@ -57,64 +63,108 @@ def get_correlation_matrix():
 
 @api_bp.route('/stock/current-price/<symbol>')
 def get_current_price(symbol):
-    """Get current market price for a stock symbol"""
+    """Get current market price for a stock symbol - Plugin-driven"""
+    import logging
+    import traceback
+    
     try:
-        import yfinance as yf
-        ticker = yf.Ticker(symbol.upper())
+        from flask import current_app
         
-        # Get current market data
-        info = ticker.info
+        # Get data provider plugin
+        pm = current_app.plugin_manager
+        logging.info(f"Fetching price for {symbol}, plugin_manager: {pm}")
         
-        # Try different price fields in order of preference
-        current_price = None
-        price_fields = ['currentPrice', 'regularMarketPrice', 'previousClose', 'ask', 'bid']
+        data_plugin = pm.get_enabled_plugin('data_providers', 'yfinance_provider')
+        logging.info(f"Data plugin: {data_plugin}")
         
-        for field in price_fields:
-            if field in info and info[field]:
-                current_price = float(info[field])
-                break
+        if not data_plugin:
+            error_msg = 'No data provider plugin available. Please enable yfinance_provider in Settings > Plugins'
+            logging.error(error_msg)
+            return jsonify({'error': error_msg}), 503
         
-        if current_price is None:
-            # Fallback: try to get latest close from history
-            hist = ticker.history(period='1d')
-            if not hist.empty:
-                current_price = float(hist['Close'].iloc[-1])
+        # Get quote via plugin
+        quote = data_plugin.get_quote(symbol.upper())
+        logging.info(f"Quote for {symbol}: {quote}")
         
-        if current_price is None:
-            return jsonify({'error': f'Could not fetch price for {symbol}'}), 404
+        if not quote:
+            error_msg = f'Could not fetch price for {symbol}. Symbol may not exist or market data unavailable.'
+            logging.warning(error_msg)
+            return jsonify({'error': error_msg}), 404
         
         return jsonify({
             'symbol': symbol.upper(),
-            'price': round(current_price, 2),
-            'timestamp': info.get('regularMarketTime', 'N/A')
+            'price': round(quote['price'], 2),
+            'timestamp': quote.get('timestamp', 'N/A')
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_msg = f'Error fetching price for {symbol}: {str(e)}'
+        logging.error(f"{error_msg}\n{traceback.format_exc()}")
+        return jsonify({'error': error_msg}), 500
 
 @api_bp.route('/charts/indices')
 def get_indices_charts():
-    """Get hourly candle data for major market indices"""
+    """Get hourly candle data for major market indices - Plugin-driven"""
     try:
-        from flask import session
-        from services.chart_service import get_hourly_candles, get_index_info, get_default_indices
+        from flask import session, current_app
+        import pandas as pd
+        
+        # Index metadata configuration
+        INDEX_INFO = {
+            '^GSPC': {'name': 'S&P 500', 'description': 'U.S. Large Cap Index', 'color': '#2962FF', 'region': 'US'},
+            '^IXIC': {'name': 'NASDAQ', 'description': 'U.S. Tech-Heavy Index', 'color': '#00BCD4', 'region': 'US'},
+            '^DJI': {'name': 'Dow Jones', 'description': 'U.S. Industrial Average', 'color': '#1976D2', 'region': 'US'},
+            '^FTSE': {'name': 'FTSE 100', 'description': 'UK Large Cap Index', 'color': '#9C27B0', 'region': 'Europe'},
+            '^STOXX50E': {'name': 'Euro Stoxx 50', 'description': 'European Blue Chip Index', 'color': '#FF6D00', 'region': 'Europe'},
+        }
+        DEFAULT_INDICES = ['^GSPC', '^IXIC', '^FTSE', '^STOXX50E']
         
         # Get selected indices from session, or use defaults
-        indices = session.get('selected_indices', get_default_indices())
+        indices = session.get('selected_indices', DEFAULT_INDICES)
         
-        # Fetch hourly candle data
-        candle_data = get_hourly_candles(indices, period='5d')
+        # Get data provider plugin
+        pm = current_app.plugin_manager
+        data_plugin = pm.get_enabled_plugin('data_providers', 'yfinance_provider')
         
-        # Get index display info
-        index_info = get_index_info()
+        if not data_plugin:
+            return jsonify({'error': 'No data provider plugin available'}), 503
         
-        # Combine data with display info
+        # Fetch hourly candle data via plugin
         result = {}
         for symbol in indices:
-            result[symbol] = {
-                'candles': candle_data.get(symbol, []),
-                'info': index_info.get(symbol, {})
-            }
+            try:
+                # Get historical data with hourly interval
+                hist_data = data_plugin.get_historical_data(symbol, period='5d', interval='1h')
+                
+                if hist_data is not None and not hist_data.empty:
+                    # Convert to lightweight-charts format
+                    candles = []
+                    for index, row in hist_data.iterrows():
+                        timestamp = int(index.timestamp())
+                        candles.append({
+                            'time': timestamp,
+                            'open': round(float(row['Open']), 2),
+                            'high': round(float(row['High']), 2),
+                            'low': round(float(row['Low']), 2),
+                            'close': round(float(row['Close']), 2),
+                            'volume': int(row['Volume']) if 'Volume' in row and pd.notna(row['Volume']) else 0
+                        })
+                    
+                    result[symbol] = {
+                        'candles': candles,
+                        'info': INDEX_INFO.get(symbol, {'name': symbol, 'description': '', 'color': '#000000', 'region': 'Unknown'})
+                    }
+                else:
+                    result[symbol] = {
+                        'candles': [],
+                        'info': INDEX_INFO.get(symbol, {})
+                    }
+            except Exception as e:
+                print(f"Error fetching chart data for {symbol}: {e}")
+                result[symbol] = {
+                    'candles': [],
+                    'info': INDEX_INFO.get(symbol, {})
+                }
         
         return jsonify(result)
         

@@ -1,9 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required
 from datetime import datetime
 from models import db, Portfolio, PortfolioAsset, Transaction
 from services.portfolio_service import portfolio_service, get_portfolio_data
 
 portfolio_bp = Blueprint('portfolio', __name__)
+
+# Protect all routes in this blueprint
+@portfolio_bp.before_request
+@login_required
+def require_login():
+    """Require authentication for all portfolio routes"""
+    pass
 
 @portfolio_bp.route('/portfolio')
 def portfolio_manager():

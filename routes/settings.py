@@ -1,6 +1,17 @@
 from flask import Blueprint, render_template, request, session, jsonify, flash, redirect, url_for, current_app
+from flask_login import login_required, current_user
 
 settings_bp = Blueprint('settings', __name__)
+
+# Protect all routes in this blueprint
+@settings_bp.before_request
+def require_login():
+    """Require authentication for all settings routes"""
+    if not current_user.is_authenticated:
+        # For AJAX/API requests, return JSON error instead of redirect
+        if request.is_json or request.path.startswith('/settings/api/') or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'Authentication required', 'redirect': url_for('auth.login')}), 401
+        return redirect(url_for('auth.login', next=request.url))
 
 @settings_bp.route('/settings', methods=['GET', 'POST'])
 def settings():
@@ -173,13 +184,18 @@ def plugins():
         return render_template('plugins.html', plugins={}, enabled_plugins=set())
 
 
-@settings_bp.route('/api/plugins/toggle', methods=['POST'])
+@settings_bp.route('/settings/api/plugins/toggle', methods=['POST'])
 def toggle_plugin():
     """Enable or disable a plugin"""
+    import logging
+    logging.info(f"Toggle plugin called - User authenticated: {current_user.is_authenticated}")
+    
     try:
         data = request.get_json()
         plugin_key = data.get('plugin_key')
         enable = data.get('enable', True)
+        
+        logging.info(f"Toggle request - plugin_key: {plugin_key}, enable: {enable}")
         
         if not plugin_key:
             return jsonify({'success': False, 'error': 'Plugin key required'}), 400
@@ -210,7 +226,7 @@ def toggle_plugin():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@settings_bp.route('/api/plugins/apply-theme', methods=['POST'])
+@settings_bp.route('/settings/api/plugins/apply-theme', methods=['POST'])
 def apply_theme():
     """Apply a plugin theme"""
     try:
@@ -253,7 +269,7 @@ def apply_theme():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@settings_bp.route('/api/plugins/reload', methods=['POST'])
+@settings_bp.route('/settings/api/plugins/reload', methods=['POST'])
 def reload_plugin():
     """Hot-reload a plugin"""
     try:
